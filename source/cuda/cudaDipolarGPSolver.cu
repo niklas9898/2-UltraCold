@@ -578,7 +578,8 @@ namespace UltraCold
         void DipolarGPSolver::run_operator_splitting(int number_of_time_steps,
                                                      double time_step,
                                                      std::ostream &output_stream,
-                                                     int write_output_every)
+                                                     int write_output_every,
+						     int iteration_twa)
         {
             // Copy input data into the device
             cudaMallocManaged(&time_step_d,sizeof(double));
@@ -595,6 +596,7 @@ namespace UltraCold
 
             // Initialize other variables
             this->write_output_every=write_output_every;
+	    this->iteration_twa=iteration_twa;
 
             //----------------------------------------------------//
             //    Here the operator-splitting iterations start    //

@@ -81,7 +81,8 @@ namespace UltraCold
                 void run_operator_splitting(int number_of_time_steps,
                                             double time_step,
                                             std::ostream& output_stream,
-                                            int write_output_every);
+                                            int write_output_every,
+					    int iteration_twa = 0);
 
                 void run_operator_splitting_faraday(int number_of_time_steps,
                                                     double time_step,
@@ -170,6 +171,7 @@ namespace UltraCold
                 bool add_lhy_correction=false;
 
                 int write_output_every;
+                int iteration_twa;
 
                 // Wave function for output
                 Vector<std::complex<double>> wave_function_output;
