@@ -165,6 +165,21 @@ namespace UltraCold
                                const char* vector_name,
                                const char* format);
 
+                // Output a 2D complex Vector in a .vtk file
+                // complex_output_vector is added to file
+                void write_vtk_twa(Vector<double>& x_axis,
+                               Vector<double>& y_axis,
+                               Vector<std::complex<double>>& complex_output_vector,
+                               const char* vector_name,
+                               const char* format);
+                
+                // Initializes .vtk file with all informations about the grid
+                void write_vtk_twa_initialize(Vector<double>& x_axis,
+                               Vector<double>& y_axis,
+                               Vector<std::complex<double>>& complex_output_vector,
+                               const char* vector_name,
+                               const char* format);
+
                 // Output a 2D slice of a 3D real Vector in a .vtk file
                 void write_slice2d_vtk(Vector<double>& ax1,
                                        Vector<double>& ax2,

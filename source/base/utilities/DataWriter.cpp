@@ -1211,6 +1211,142 @@ namespace UltraCold
 
         }
 
+        // Write complex 2D vector to .vtk file
+        // New iterations are appended to existing file
+
+        void DataWriter::write_vtk_twa(Vector<double>& x,
+                                   Vector<double>& y,
+                                   Vector<std::complex<double>>& v,
+                                   const char* output_vector_name,
+                                   const char* format)
+        {
+
+            assert(x.order()==1);
+            assert(y.order()==1);
+            assert(v.order()==2);
+            int nx=x.extent(0);
+            int ny=y.extent(0);
+            assert(v.extent(0)==nx);
+            assert(v.extent(1)==ny);
+            assert(strcmp(format,"ASCII") || strcmp(format,"BINARY"));
+
+            // Everything is fine, write the output
+
+            double xmin = x(0);
+            double ymin = y(0);
+            double dx = std::abs(x(1)-x(0));
+            double dy = std::abs(y(1)-y(0));
+
+            output_stream.open(output_file_name+".vtk",std::ios_base::app | std::ios_base::binary);
+
+                // Real part of the input vector
+
+                output_stream << "SCALARS real_" << output_vector_name << " double 1" << std::endl;
+                output_stream << "LOOKUP_TABLE default"                               << std::endl;
+
+                if(strcmp(format,"BINARY")==0)
+                {
+                    for (size_t j = 0; j < ny; ++j) {
+                        for (size_t i = 0; i < nx; ++i)
+                        {
+                            double value = v(i, j).real();
+                            SwapEnd(value);
+                            output_stream.write(reinterpret_cast<char *>(&value), sizeof(double));
+                        }
+                    }
+                }
+                else if(strcmp(format,"ASCII")==0)
+                {
+                    for (size_t j = 0; j < ny; ++j)
+                        for (size_t i = 0; i < nx; ++i)
+                            output_stream << v(i, j).real() << " ";
+                }
+
+                output_stream << std::endl;
+
+                // Imaginary part of the input vector
+
+                output_stream << "SCALARS imag_" << output_vector_name << " double 1" << std::endl;
+                output_stream << "LOOKUP_TABLE default"                               << std::endl;
+
+                if(strcmp(format,"BINARY")==0)
+                {
+                    for (size_t j = 0; j < ny; ++j) {
+                        for (size_t i = 0; i < nx; ++i)
+                        {
+                            double value = v(i, j).imag();
+                            SwapEnd(value);
+                            output_stream.write(reinterpret_cast<char *>(&value), sizeof(double));
+                        }
+                    }
+                }
+                else if(strcmp(format,"ASCII")==0)
+                {
+                    for (size_t j = 0; j < ny; ++j)
+                        for (size_t i = 0; i < nx; ++i)
+                            output_stream << v(i, j).imag() << " ";
+                }
+
+                output_stream << std::endl;
+
+            output_stream.close();
+
+        }
+
+        // Initialize .vtk file for 2D vector
+
+        void DataWriter::write_vtk_twa_initialize(Vector<double>& x,
+                                                Vector<double>& y,
+                                                Vector<std::complex<double>>& v,
+                                                const char* output_vector_name,
+                                                const char* format)
+        {
+
+            assert(x.order()==1);
+            assert(y.order()==1);
+            assert(v.order()==2);
+            int nx=x.extent(0);
+            int ny=y.extent(0);
+            assert(v.extent(0)==nx);
+            assert(v.extent(1)==ny);
+            assert(strcmp(format,"ASCII") || strcmp(format,"BINARY"));
+
+            // Everything is fine, write the output
+
+            double xmin = x(0);
+            double ymin = y(0);
+            double dx = std::abs(x(1)-x(0));
+            double dy = std::abs(y(1)-y(0));
+
+            output_stream.open(output_file_name+".vtk",std::ios_base::out | std::ios_base::binary);
+
+                // Header of the .vtk file
+
+                output_stream << "# vtk DataFile Version 3.0"                       << std::endl;
+                output_stream << "# 2D plot of a 2D Complex Vector"                 << std::endl;
+
+                // Data type
+
+                if(strcmp(format,"ASCII")==0)
+                    output_stream << "ASCII"                                            << std::endl;
+                else if (strcmp(format,"BINARY")==0)
+                    output_stream << "BINARY"                                           << std::endl;
+
+                // Dataset and mesh information
+
+                output_stream << "DATASET STRUCTURED_POINTS"                        << std::endl;
+                output_stream << "DIMENSIONS " << nx   << " " << ny   << " " << "1" << std::endl;
+                output_stream << "ORIGIN "     << xmin << " " << ymin << " " << "0" << std::endl;
+                output_stream << "SPACING "    << dx   << " " << dy   << " " << "0" << std::endl;
+
+                output_stream << "POINT_DATA "   << nx*ny                             << std::endl;
+                output_stream << std::endl;
+                
+            output_stream.close();
+
+        }
+
+
         /**
          * @brief Write an output data file in .vtk format, for 2D slice of real 3D Vector
          * @param ax1 *Vector<double>* the first Vector for the output.
