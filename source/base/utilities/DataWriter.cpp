@@ -1214,10 +1214,12 @@ namespace UltraCold
         // Write complex 2D vector to .vtk file
         // New iterations are appended to existing file
 
+        // replace const char* by const std::string& to insert strings. Check meaning of expression beforehand
+
         void DataWriter::write_vtk_twa(Vector<double>& x,
                                    Vector<double>& y,
                                    Vector<std::complex<double>>& v,
-                                   const char* output_vector_name,
+                                   const std::string& output_vector_name,
                                    const char* format)
         {
 
@@ -1298,7 +1300,7 @@ namespace UltraCold
         void DataWriter::write_vtk_twa_initialize(Vector<double>& x,
                                                 Vector<double>& y,
                                                 Vector<std::complex<double>>& v,
-                                                const char* output_vector_name,
+                                                const std::string& output_vector_name,
                                                 const char* format)
         {
 
