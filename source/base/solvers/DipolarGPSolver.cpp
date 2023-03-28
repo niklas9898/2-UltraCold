@@ -727,8 +727,15 @@ namespace UltraCold
                         alphak.real(std::sqrt(0.25)*u);
                         alphak.imag(std::sqrt(0.25)*v);
 
-                        eps_k = 0.5*std::sqrt(pow(kx[i],2)+pow(ky[j],2));
-                        Ek = std::sqrt(eps_k*(eps_k+2*density*(4*PI*scattering_length+Vtilde(i,j))));
+                        // eps_k = 0.5*std::sqrt(pow(kx[i],2)+pow(ky[j],2));
+                        // Ek = std::sqrt(eps_k*(eps_k+2*density*(4*PI*scattering_length+Vtilde(i,j))));
+
+                        // changed single particle energy to k^2/m, and added the 2pi factor
+                        // 4pi -> sqrt(8pi) since we are in quasi 2d
+
+                        eps_k = 0.5*(pow(TWOPI*kx[i],2)+pow(TWOPI*ky[j],2));
+                        Ek = std::sqrt(eps_k*(eps_k+2*density*(std::sqrt(4*TWOPI)*scattering_length + Vtilde(i,j))));
+
                         if(eps_k == 0)
                         {
                             uk = 1;
@@ -775,8 +782,14 @@ namespace UltraCold
                                 alphak.real(std::sqrt(0.25)*u);
                                 alphak.imag(std::sqrt(0.25)*v);
 
-                                eps_k = 0.5*std::sqrt(pow(kx[i],2)+pow(ky[j],2)+pow(kz[k],2));
+                                // eps_k = 0.5*std::sqrt(pow(kx[i],2)+pow(ky[j],2)+pow(kz[k],2));
+                                // Ek = std::sqrt(eps_k*(eps_k+2*density*(4*PI*scattering_length+Vtilde(i,j,k))));
+
+                                // change single particle energy to k^2/m, added TWOPI
+
+                                eps_k = 0.5*(pow(TWOPI*kx[i],2)+pow(TWOPI*ky[j],2)+pow(TWOPI*kz[k],2));
                                 Ek = std::sqrt(eps_k*(eps_k+2*density*(4*PI*scattering_length+Vtilde(i,j,k))));
+
                                 if(eps_k == 0)
                                 {
                                     uk = 1;
