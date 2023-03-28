@@ -596,7 +596,7 @@ namespace UltraCold
 
             // Initialize other variables
             this->write_output_every=write_output_every;
-	    this->iteration_twa=iteration_twa;
+	        this->iteration_twa=iteration_twa;
 
             //----------------------------------------------------//
             //    Here the operator-splitting iterations start    //
@@ -844,6 +844,9 @@ namespace UltraCold
                                 v = distribution(generator);
                                 s = u * u + v * v;
                             } while (s >= 1.0 || s == 0);
+
+                            std::cout << "u" << u << std::endl;
+                            std::cout << "v" << v << std::endl;
 
                             s = sqrt((-2.0 * log(s)) / s);
                             u = u * s;
