@@ -91,7 +91,8 @@ namespace UltraCold
                                                     std::ostream& output_stream,
                                                     int write_output_every);
 
-                void set_tw_initial_conditions(bool system_is_trapped);
+                void set_tw_initial_conditions(bool system_is_trapped,
+                                                    std::default_random_engine& generator);
 
                 // Get a pointer to the wave function stored on the device
                 cuDoubleComplex* get_wave_function_device_pointer();

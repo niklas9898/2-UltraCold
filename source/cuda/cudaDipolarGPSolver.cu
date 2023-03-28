@@ -795,7 +795,8 @@ namespace UltraCold
          *
          */
 
-        void DipolarGPSolver::set_tw_initial_conditions(bool system_is_trapped)
+        void DipolarGPSolver::set_tw_initial_conditions(bool system_is_trapped,
+                                                        std::default_random_engine& generator)
         {
 
             // Need to get in a copy of the scattering length
@@ -808,11 +809,11 @@ namespace UltraCold
             {
 
                 // Obtain a random seed from the clock
-                std::default_random_engine generator;
-                typedef std::chrono::high_resolution_clock clock;
-                clock::time_point beginning = clock::now();
-                clock::duration d = clock::now() - beginning;
-                generator.seed(d.count());
+                // std::default_random_engine generator;
+                // typedef std::chrono::high_resolution_clock clock;
+                // clock::time_point beginning = clock::now();
+                // clock::duration d = clock::now() - beginning;
+                // generator.seed(d.count());
                 std::uniform_real_distribution<double> distribution(-1, 1);
 
                 // Generate the alphas
