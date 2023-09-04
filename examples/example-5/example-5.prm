@@ -25,6 +25,6 @@ beta                             = 0.9   # step for the heavy-ball acceleration 
 
 # Run parameters for real-time dynamics
 
-number of real time steps = 50000 # Total number of time-steps for real time dynamics
+number of real time steps = 5 # Total number of time-steps for real time dynamics
 time step                 = 0.001 # Time step for real-time dynamics, in milliseconds
-write output every        = 100   # Write output every tot time steps
+write output every        = 1   # Write output every tot time steps

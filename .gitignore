@@ -4,5 +4,10 @@
 *lib*
 TODOs*
 .idea
-/base/bundled/arpack-ng/build/
+base*
 *success*
+cmake/UltraColdTargets.cmake
+cmake/UltraColdTargets-release.cmake
+include/*
+examples/random_vortices/*
+examples/vortex_lattice/*
