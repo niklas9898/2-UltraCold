@@ -82,7 +82,15 @@ namespace UltraCold
                                             double time_step,
                                             std::ostream& output_stream,
                                             int write_output_every,
-					    int iteration_twa = 0);
+					                        int iteration_twa = 0);
+                
+                // Overload to start operator splitting at particular index
+                void run_operator_splitting(int number_of_time_steps,
+                                            int index_start,
+                                            double time_step,
+                                            std::ostream& output_stream,
+                                            int write_output_every,
+					                        int iteration_twa = 0);
 
                 void run_operator_splitting_faraday(int number_of_time_steps,
                                                     double time_step,
