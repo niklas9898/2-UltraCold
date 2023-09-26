@@ -11,3 +11,6 @@ cmake/UltraColdTargets-release.cmake
 include/*
 examples/random_vortices/*
 examples/vortex_lattice/*
+examples/VideoData/*
+examples/2d_twa_dipolars/*
+examples/supersolid_quench/*
