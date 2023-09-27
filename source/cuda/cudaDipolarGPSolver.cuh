@@ -61,6 +61,17 @@ namespace UltraCold
                                 double                        theta_mu,
                                 double                        phi_mu,
                                 bool add_lhy_correction);  // 3D problems
+                // Include dipolar_cutoff containing cutoff_x, cutoff_y, cutoff_z
+                DipolarGPSolver(Vector<double>&               x,
+                                Vector<double>&               y,
+                                Vector<double>&               z,
+                                Vector<std::complex<double>>& psi_0,
+                                Vector<double>&               Vext,
+                                double                        scattering_length,
+                                double                        dipolar_length,
+                                Vector<double>                dipolar_cutoff,
+                                bool add_lhy_correction);  // 3D problems with dipolar cutoff
+
 
                 // Destructor
                 ~DipolarGPSolver();

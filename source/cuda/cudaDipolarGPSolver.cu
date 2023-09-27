@@ -370,6 +370,215 @@ namespace UltraCold
         }
 
         /**
+         * @brief Constructor for 3d problems including a dipolar cutoff
+         */
+
+        DipolarGPSolver::DipolarGPSolver(Vector<double> &x,
+                                         Vector<double> &y,
+                                         Vector<double> &z,
+                                         Vector<std::complex<double>> &psi_0,
+                                         Vector<double> &Vext,
+                                         double scattering_length,
+                                         double dipolar_length,
+                                         Vector<double> dipolar_cutoff,
+                                         bool add_lhy_correction)
+        {
+
+            // Check the order and extent of the Vectors provided
+            assert(x.order()==1);
+            assert(y.order()==1);
+            assert(z.order()==1);
+            assert(psi_0.order() == 3);
+            assert(Vext.order() == 3);
+            assert(dipolar_cutoff.order() == 1);
+            nx=x.extent(0);
+            ny=y.extent(0);
+            nz=z.extent(0);
+            assert(psi_0.extent(0) == nx);
+            assert(psi_0.extent(1) == ny);
+            assert(psi_0.extent(2) == nz);
+            assert(Vext.extent(0) == nx);
+            assert(Vext.extent(1) == ny);
+            assert(Vext.extent(2) == nz);
+            assert(dipolar_cutoff.extent(0) == 3);
+            problem_is_3d=true;
+            npoints=nx*ny*nz;
+
+            // Initialize the thread grid, i.e. choose the number of cuda threads per block and the number of blocks.
+            blockSize = 512;
+            gridSize = (npoints + blockSize - 1) / blockSize;
+
+            // Allocate memory for all device arrays
+            cudaMalloc(&external_potential_d,npoints*sizeof(double));
+            cudaMalloc(&kmod2_d,             npoints*sizeof(double));
+            cudaMalloc(&density_d,           npoints*sizeof(double));
+            cudaMalloc(&wave_function_d,     npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&hpsi_d,              npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&ft_wave_function_d,  npoints*sizeof(cuDoubleComplex));
+
+            // Allocate space for device and managed scalars
+            cudaMalloc(&scattering_length_d,sizeof(double));
+            cudaMallocManaged(&norm_d,              sizeof(double));
+            cudaMallocManaged(&initial_norm_d,      sizeof(double));
+            cudaMallocManaged(&chemical_potential_d,sizeof(double));
+
+            // Get the first necessary copies of input data from host to device
+            cudaMemcpy(external_potential_d,Vext.data(),       npoints*sizeof(double),         cudaMemcpyHostToDevice);
+            cudaMemcpy(wave_function_d,     psi_0.data(),      npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+            cudaMemcpy(scattering_length_d, &scattering_length,1      *sizeof(double),         cudaMemcpyHostToDevice);
+
+            // Initialize the mesh in Fourier space, and copy it to the device
+            Vector<double> kx(nx);
+            Vector<double> ky(ny);
+            Vector<double> kz(nz);
+            Vector<double> kmod2(nx,ny,nz);
+            create_mesh_in_Fourier_space(x,y,z,kx,ky,kz);
+            for (size_t i = 0; i < nx; ++i)
+                for (size_t j = 0; j < ny; ++j)
+                    for (size_t k = 0; k < nz; ++k)
+                        kmod2(i,j,k) = std::pow(kx(i),2)+
+                                       std::pow(ky(j),2)+
+                                       std::pow(kz(k),2);
+            cudaMemcpy(kmod2_d, kmod2.data(),npoints*sizeof(double),cudaMemcpyHostToDevice);
+
+            // Initialize space steps
+            dx = x(1)-x(0);
+            dy = y(1)-y(0);
+            dz = z(1)-z(0);
+            dv = dx*dy*dz;
+
+            // Initialize the device reduce kernel
+            cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
+            cudaDeviceSynchronize();
+
+            // Allocate temporary storage memory, required for reduction kernels
+            cudaMalloc(&temporary_storage_d,size_temporary_storage);
+            cudaDeviceSynchronize();
+
+            // Calculate initial norm
+            calculate_density(density_d,wave_function_d,npoints);
+            cudaDeviceSynchronize();
+            cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
+            cudaDeviceSynchronize();
+            norm_d[0]=norm_d[0]*dv;
+            initial_norm_d[0]=norm_d[0];
+            std::cout << "Initial norm: " << initial_norm_d[0] << std::endl;
+
+            // Initialize the wave function to return as a result
+            result_wave_function.reinit(nx,ny,nz);
+
+            // Initialize the host vectors containing the mesh axis. This can be useful in particular for data output
+            x_axis.reinit(nx);
+            y_axis.reinit(ny);
+            z_axis.reinit(nz);
+            x_axis=x;
+            y_axis=y;
+            z_axis=z;
+            kx_axis.reinit(nx);
+            ky_axis.reinit(ny);
+            kz_axis.reinit(nz);
+            kx_axis=kx;
+            ky_axis=ky;
+            kz_axis=kz;
+            cudaMalloc(&x_axis_d,nx*sizeof(double));
+            cudaMalloc(&y_axis_d,ny*sizeof(double));
+            cudaMalloc(&z_axis_d,nz*sizeof(double));
+            cudaMemcpy(x_axis_d,x_axis.data(),nx*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMemcpy(y_axis_d,y_axis.data(),ny*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMemcpy(z_axis_d,z_axis.data(),nz*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMalloc(&kx_axis_d,nx*sizeof(double));
+            cudaMalloc(&ky_axis_d,ny*sizeof(double));
+            cudaMalloc(&kz_axis_d,nz*sizeof(double));
+            cudaMemcpy(kx_axis_d,kx_axis.data(),nx*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMemcpy(ky_axis_d,ky_axis.data(),ny*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMemcpy(kz_axis_d,kz_axis.data(),nz*sizeof(double),cudaMemcpyHostToDevice);
+            r2mod.reinit(nx,ny,nz);
+            for(int i = 0; i < nx; ++i)
+                for(int j = 0; j < ny; ++j)
+                    for(int k = 0; k < nz; ++k)
+                        r2mod(i,j,k) = std::pow(x(i),2);
+            cudaMalloc(&r2mod_d,npoints*sizeof(double));
+            cudaMemcpy(r2mod_d,r2mod.data(),npoints*sizeof(double),cudaMemcpyHostToDevice);
+
+            // Initialize the Fourier transform of the dipolar potential including a dipolar_cutoff
+            // dipolar_cutoff contains cutoff_x, cutoff_y, cutoff_z
+            // if all cutoffs are equal -> choose spherical cutoff
+            // if two cutoffs are equal -> choose cylindrical cutoff
+            // else return error
+            cudaMallocManaged(&epsilon_dd_d,sizeof(double));
+            epsilon_dd_d[0] = 0.0;
+            if(scattering_length != 0)
+                epsilon_dd_d[0] = dipolar_length/scattering_length;
+            Vtilde.reinit(nx,ny,nz);
+
+            if(dipolar_cutoff[0] == dipolar_cutoff[1] && dipolar_cutoff[1] == dipolar_cutoff[2])
+            {
+                // prepare dipole potential with spherical cutoff
+            }
+            else if(dipolar_cutoff[0] == dipolar_cutoff[1])
+            {
+                // prepare dipole potential with cylindrical cutoff (cylinder along the z-axis)
+            }
+            else
+            {
+                std::cout << "No dipolar potential is implemented for this choice of cutoffs" << std::endl;
+            }
+            
+            
+            
+            // for (int i = 0; i < nx; ++i)
+            //     for (int j = 0; j < ny; ++j)
+            //         for (int k = 0; k < nz; ++k)
+            //         {
+            //             double aux = TWOPI * (
+            //                     kx[i]*sin(theta_mu)*cos(phi_mu) +
+            //                     ky[j]*sin(theta_mu)*sin(phi_mu)+
+            //                     kz[k]*cos(theta_mu));
+            //             double aux1 = TWOPI * sqrt(pow(kx[i], 2) + pow(ky[j], 2) + pow(kz[k], 2));
+            //             if (aux1 <= 1.E-6)
+            //                 Vtilde(i,j,k) = -4*PI*scattering_length*epsilon_dd_d[0];
+            //             else
+            //                 Vtilde(i,j,k) =
+            //                         12.0 * PI * scattering_length * epsilon_dd_d[0] * (pow(aux/aux1,2)-1.0/3.0);
+            //         }
+            
+
+            
+            cudaMalloc(&Vtilde_d,npoints*sizeof(cuDoubleComplex));
+            cudaMemcpy(Vtilde_d,Vtilde.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+            cudaMalloc(&Phi_dd_d,npoints*sizeof(cuDoubleComplex));
+
+            // Initialize gamma(\epsilon_dd) for the LHY correction
+            cudaMallocManaged(&gamma_epsilondd_d,sizeof(double));
+            gamma_epsilondd_d[0] = 0.0;
+            if (epsilon_dd_d[0] != 0 && add_lhy_correction)
+            {
+                gamma_epsilondd_d[0] = 64.0*sqrt(PI)/3*sqrt(pow(scattering_length,5));
+                double F_epsilon_dd=0.0;
+                int n_theta=1000;
+                double d_theta=PI/(n_theta-1);
+
+                std::complex<double> csum;
+                std::complex<double> caux;
+                csum={0.0,0.0};
+                for (int i = 0; i < n_theta; ++i)
+                {
+                    double theta=i*d_theta;
+                    caux = pow(1.0+epsilon_dd_d[0]*(3.0*pow(cos(theta),2)-1.0),5);
+                    caux = sqrt(caux);
+                    csum += sin(theta)*caux;
+                }
+                csum *= d_theta;
+                F_epsilon_dd = csum.real();
+                gamma_epsilondd_d[0] *= F_epsilon_dd;
+            }
+
+            // Initialize the wave function for the output
+            wave_function_output.reinit(nx,ny,nz);
+
+        }
+
+        /**
          * @brief Destructor frees device memory
          *
          * */
