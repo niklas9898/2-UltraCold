@@ -14,3 +14,8 @@ examples/vortex_lattice/*
 examples/VideoData/*
 examples/2d_twa_dipolars/*
 examples/supersolid_quench/*
+quench/*
+labyrinth_CUDA/*
+labyrinth_modified/*
+toy_models/*
+energy_dif/*
