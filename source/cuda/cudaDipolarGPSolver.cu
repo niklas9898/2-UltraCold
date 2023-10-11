@@ -1144,10 +1144,10 @@ namespace UltraCold
                             // Ek = std::sqrt(eps_k*(eps_k+2*density*(4*PI*scattering_length+Vtilde(i,j))));
 
                             // changed single particle energy to k^2/m, and added the 2pi factor
-                            // 4pi -> sqrt(8pi) since we are in quasi 2d
+                            // 4pi since scattering_length was divided by sqrt(2pi)
 
                             eps_k = 0.5*(pow(TWOPI*kx_axis[i],2)+pow(TWOPI*ky_axis[j],2));
-                            Ek = std::sqrt(eps_k*(eps_k+2*density*(std::sqrt(4*TWOPI)*scattering_length + Vtilde(i,j))));
+                            Ek = std::sqrt(eps_k*(eps_k+2*density*(4*PI*scattering_length + Vtilde(i,j))));
 
                             if (eps_k == 0)
                             {
