@@ -16,3 +16,9 @@ examples/2d_twa_dipolars/*
 examples/supersolid_quench/*
 examples/faraday/*
 examples/cutoff/*
+quench/*
+labyrinth_CUDA/*
+labyrinth_modified/*
+toy_models/*
+energy_dif/*
+
