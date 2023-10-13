@@ -511,13 +511,20 @@ namespace UltraCold
                 epsilon_dd_d[0] = dipolar_length/scattering_length;
             Vtilde.reinit(nx,ny,nz);
 
-            if(dipolar_cutoff[0] == dipolar_cutoff[1] && dipolar_cutoff[1] == dipolar_cutoff[2])
+            if(dipolar_cutoff(0) == dipolar_cutoff(1) && dipolar_cutoff(1) == dipolar_cutoff(2))
             {
                 // prepare dipole potential with spherical cutoff
             }
-            else if(dipolar_cutoff[0] == dipolar_cutoff[1])
+            else if(dipolar_cutoff(0) == dipolar_cutoff(1))
             {
                 // prepare dipole potential with cylindrical cutoff (cylinder along the z-axis)
+
+                // for (int i = 0; i < nx; ++i)
+                //     for (int j = 0; j < ny; ++j)
+                //         for (int k = 0; k < nz; ++k)
+                //         {
+                //             Vtilde(i,j,k) = 0;
+                //         }
             }
             else
             {
