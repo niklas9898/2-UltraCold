@@ -21,14 +21,6 @@ set (CMAKE_GENERATOR "Unix Makefiles" CACHE INTERNAL "" FORCE)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
 
-	#-------------------------------
-	# Explicitly set the compilers
-	#-------------------------------
-
-	set(CMAKE_CXX_COMPILER icpc)
-	set(CMAKE_C_COMPILER icc)
-	set(CMAKE_Fortran_COMPILER ifort)
-
 	#---------------------------
 	# Set useful compiler flags
 	#---------------------------
@@ -47,16 +39,16 @@ endif()
 
 option(ULTRACOLD_WITH_CUDA "Build UltraCold with CUDA" OFF)
 
-if(ULTRACOLD_WITH_CUDA)
-	message(STATUS "Building UltraCold with cuda libraries")
-	set(CMAKE_CUDA_COMPILER nvcc)
-endif()
-
 #---------------------------------------------------
 # Set the name, language and version of the project
 #---------------------------------------------------
 
-project(UltraCold LANGUAGES CUDA C CXX Fortran VERSION 1.0)
+project(UltraCold LANGUAGES C CXX Fortran VERSION 1.0)
+
+if(ULTRACOLD_WITH_CUDA)
+	message(STATUS "Building UltraCold with cuda libraries")
+	enable_language(CUDA)
+endif()
 
 #---------------------------------------
 # Set the default build type as Release

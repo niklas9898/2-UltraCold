@@ -16,23 +16,6 @@ include(UltraColdTargets)
 
 macro(ULTRACOLD_SETUP_TARGET target)
 
-    #-------------------------------------
-    # Set the compilers as the Intel ones
-    #-------------------------------------
-
-    set(CMAKE_CXX_COMPILER icpc)
-    set(CMAKE_C_COMPILER icc)
-
-    #----------------------------------------------
-    # Set the correct flags for linking with mkl
-    #----------------------------------------------
-
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
-    else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
-    endif()
-
     #----------------------------------------
     # Set the fundamental include directory
     #----------------------------------------
