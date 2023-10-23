@@ -34,6 +34,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
 endif()
 
 #---------------------------------------------
+# Decide on which cluster to build
+# possible options: "helix", "einc"
+#---------------------------------------------
+
+option(WHICH_CLUSTER "Build on Cluster: " "helix")
+
+#---------------------------------------------
 # Decide whether or not to build with CUDA
 #---------------------------------------------
 

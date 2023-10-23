@@ -4,11 +4,20 @@
 
 set(ARPACK_DIR "${CMAKE_INSTALL_PREFIX}/base/bundled/arpack-ng")
 
-execute_process(
-        COMMAND ./configure_bundled.sh ${ARPACK_DIR}
+if(WHICH_CLUSTER STREQUAL "helix")
+    execute_process(
+        COMMAND ./configure_bundled_helix.sh ${ARPACK_DIR}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bundled
         RESULT_VARIABLE arpack-ng-success
-)
+    )
+elseif(WHICH_CLUSTER STREQUAL "einc")
+    execute_process(
+        COMMAND ./configure_bundled_einc.sh ${ARPACK_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bundled
+        RESULT_VARIABLE arpack-ng-success
+    )
+endif()
+
 
 if(arpack-ng-success EQUAL "1")
     message(FATAL_ERROR
