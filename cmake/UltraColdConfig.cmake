@@ -17,6 +17,14 @@ include(UltraColdTargets)
 macro(ULTRACOLD_SETUP_TARGET target)
 
     if(WHICH_CLUSTER STREQUAL "helix")
+        #-------------------------------
+	# Explicitly set the compilers
+	#-------------------------------
+
+	set(CMAKE_CXX_COMPILER icpc)
+	set(CMAKE_C_COMPILER icc)
+	set(CMAKE_Fortran_COMPILER ifort)
+
         #--------------------------------------------
         # Still need a c++ compiler. Set it still as
         # as the Intel one, plus link to MKL
@@ -63,6 +71,14 @@ endmacro()
 macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
 
     if(WHICH_CLUSTER STREQUAL "helix")
+        #-------------------------------
+	# Explicitly set the compilers
+	#-------------------------------
+
+	set(CMAKE_CXX_COMPILER icpc)
+	set(CMAKE_C_COMPILER icc)
+	set(CMAKE_Fortran_COMPILER ifort)
+
         #--------------------------------------------
         # Still need a c++ compiler. Set it still as
         # as the Intel one, plus link to MKL

@@ -21,6 +21,14 @@ set (CMAKE_GENERATOR "Unix Makefiles" CACHE INTERNAL "" FORCE)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
 
+	#-------------------------------
+	# Explicitly set the compilers
+	#-------------------------------
+
+	set(CMAKE_CXX_COMPILER icpc)
+	set(CMAKE_C_COMPILER icc)
+	set(CMAKE_Fortran_COMPILER ifort)
+
 	#---------------------------
 	# Set useful compiler flags
 	#---------------------------
