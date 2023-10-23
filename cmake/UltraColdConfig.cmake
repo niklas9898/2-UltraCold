@@ -66,7 +66,6 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
     # Set the fundamental include directory
     #----------------------------------------
 
-    message(STATUS "Hi\n")
     target_include_directories(${target} PUBLIC "${ULTRACOLD_DIR}/include")
 
     #----------------------------------------------------------
@@ -74,19 +73,12 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
     # CUDA resolve its own symbols.
     #----------------------------------------------------------
 
-    message(STATUS "1")
     #find_package(CUDA REQUIRED)
-    message(STATUS "2")
-    enable_language(CUDA)
-    message(STATUS "3")
-    set(CMAKE_CUDA_COMPILER nvcc)
-    message(STATUS "4")
+    #enable_language(CUDA)
+    #set(CMAKE_CUDA_COMPILER nvcc)
     set_target_properties(${target} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-    message(STATUS "5")
     target_include_directories(${target} PUBLIC "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
-    message(STATUS "6")
     target_link_libraries(${target} PUBLIC "${CUDA_LIBRARIES}" -lcufft)
-    message(STATUS "7")
     add_compile_definitions(ULTRACOLD_WITH_CUDA)
 
     #-------------------------

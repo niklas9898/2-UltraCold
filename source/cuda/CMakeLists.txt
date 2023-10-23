@@ -48,10 +48,10 @@ set_target_properties(cudaSolvers
 # Suppress generation of specific code for specific architecture
 #-----------------------------------------------------------------
 
-set_property(TARGET cudaSolvers
-        PROPERTY CUDA_ARCHITECTURES
-        OFF
-)
+#set_property(TARGET cudaSolvers
+#        PROPERTY CUDA_ARCHITECTURES
+#        OFF
+#)
 
 #---------------------------------------
 # Enable separable compilation
