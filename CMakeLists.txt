@@ -58,11 +58,16 @@ option(ULTRACOLD_WITH_CUDA "Build UltraCold with CUDA" OFF)
 # Set the name, language and version of the project
 #---------------------------------------------------
 
-project(UltraCold LANGUAGES C CXX Fortran VERSION 1.0)
-
 if(ULTRACOLD_WITH_CUDA)
 	message(STATUS "Building UltraCold with cuda libraries")
-	enable_language(CUDA)
+	if(WHICH_CLUSTER STREQUAL "justus")
+            project(UltraCold LANGUAGES CUDA C CXX Fortran VERSION 1.0)
+            set(CMAKE_CUDA_COMPILER nvcc)            
+        else()
+
+            project(UltraCold LANGUAGES C CXX Fortran VERSION 1.0)
+            enable_language(CUDA)
+        endif()
 endif()
 
 #---------------------------------------

@@ -48,7 +48,7 @@ set_target_properties(cudaSolvers
 # Suppress generation of specific code for specific architecture
 #-----------------------------------------------------------------
 
-if(WHICH_CLUSTER STREQUAL "helix")
+if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
     set_property(TARGET cudaSolvers
             PROPERTY CUDA_ARCHITECTURES
             OFF

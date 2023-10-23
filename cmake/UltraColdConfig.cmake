@@ -16,7 +16,7 @@ include(UltraColdTargets)
 
 macro(ULTRACOLD_SETUP_TARGET target)
 
-    if(WHICH_CLUSTER STREQUAL "helix")
+    if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
         #-------------------------------
 	# Explicitly set the compilers
 	#-------------------------------
@@ -70,7 +70,7 @@ endmacro()
 
 macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
 
-    if(WHICH_CLUSTER STREQUAL "helix")
+    if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
         #-------------------------------
 	# Explicitly set the compilers
 	#-------------------------------
@@ -102,9 +102,12 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
     # CUDA resolve its own symbols.
     #----------------------------------------------------------
 
-    #find_package(CUDA REQUIRED)
-    #enable_language(CUDA)
-    #set(CMAKE_CUDA_COMPILER nvcc)
+    if(WHICH_CLUSTER STREQUAL "justus")
+        find_package(CUDA 11.0 REQUIRED)
+        enable_language(CUDA)
+        set(CMAKE_CUDA_COMPILER nvcc)
+    endif()
+
     set_target_properties(${target} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
     target_include_directories(${target} PUBLIC "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
     target_link_libraries(${target} PUBLIC "${CUDA_LIBRARIES}" -lcufft)
