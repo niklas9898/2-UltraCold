@@ -4,7 +4,7 @@
 
 set(ARPACK_DIR "${CMAKE_INSTALL_PREFIX}/base/bundled/arpack-ng")
 
-if(WHICH_CLUSTER STREQUAL "helix")
+if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
     execute_process(
         COMMAND ./configure_bundled_helix.sh ${ARPACK_DIR}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bundled
