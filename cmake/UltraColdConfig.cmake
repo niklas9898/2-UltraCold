@@ -16,6 +16,20 @@ include(UltraColdTargets)
 
 macro(ULTRACOLD_SETUP_TARGET target)
 
+    if(WHICH_CLUSTER STREQUAL "helix")
+        #--------------------------------------------
+        # Still need a c++ compiler. Set it still as
+        # as the Intel one, plus link to MKL
+        #--------------------------------------------
+
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
+        else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
+        endif()
+    endif()  
+    
+    
     #----------------------------------------
     # Set the fundamental include directory
     #----------------------------------------
@@ -48,20 +62,19 @@ endmacro()
 
 macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
 
-    #--------------------------------------------
-    # Still need a c++ compiler. Set it still as
-    # as the Intel one, plus link to MKL
-    #--------------------------------------------
+    if(WHICH_CLUSTER STREQUAL "helix")
+        #--------------------------------------------
+        # Still need a c++ compiler. Set it still as
+        # as the Intel one, plus link to MKL
+        #--------------------------------------------
 
-    #set(CMAKE_CXX_COMPILER icpc)
-    #set(CMAKE_C_COMPILER icc)
-
-    #if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
-    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
-    #else()
-    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
-    #endif()
-
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
+        else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
+        endif()
+    endif()    
+    
     #----------------------------------------
     # Set the fundamental include directory
     #----------------------------------------
