@@ -68,6 +68,7 @@ macro(ULTRACOLD_SETUP_TARGET target)
     #----------------------------------------
 
     target_link_libraries(${target} PUBLIC utilities)
+    find_package(OpenMP)
     target_link_libraries(${target} PUBLIC solvers)
     target_link_libraries(${target} PUBLIC ARPACK::ARPACK)
 

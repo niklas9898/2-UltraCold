@@ -2,14 +2,13 @@
 # Build a library containing all solver classes based on Intel's MKL 
 ##################################################################################
 
+cmake_minimum_required(VERSION 3.10)
+
 #--------------
 # Find OpenMP
 #--------------
 
 find_package(OpenMP REQUIRED)
-if (OPENMP_FOUND)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
 
 #-------------------
 # Find arpack-ng
@@ -43,7 +42,11 @@ target_include_directories(solvers
 # Link additional internal libraries
 #------------------------------------
 
-target_link_libraries(solvers utilities)
+if(OpenMP_FOUND)
+    target_link_libraries(solvers utilities OpenMP::OpenMP_CXX)
+else()
+    target_link_libraries(solvers utilities)
+endif()
 
 #---------------------
 # Link to arpack-ng
