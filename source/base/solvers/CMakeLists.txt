@@ -10,12 +10,6 @@ cmake_minimum_required(VERSION 3.10)
 
 find_package(OpenMP REQUIRED)
 
-#-------------------
-# Find arpack-ng
-#-------------------
-
-find_package(arpack-ng REQUIRED HINTS ${ARPACK_DIR} $ENV{ARPACK_DIR})
-
 #-------------------------------
 # Create the solvers library
 #-------------------------------
