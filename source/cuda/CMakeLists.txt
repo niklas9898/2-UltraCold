@@ -56,7 +56,6 @@ if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
 endif()
 
 
-
 #---------------------------------------
 # Enable separable compilation
 #---------------------------------------
