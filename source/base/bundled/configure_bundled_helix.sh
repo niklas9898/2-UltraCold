@@ -35,9 +35,6 @@ else
   
   cd build
   cmake -DCMAKE_INSTALL_PREFIX=$1 \
-        -DCMAKE_Fortran_COMPILER=ifort \
-        -DCMAKE_C_COMPILER=icc \
-        -DCMAKE_CXX_COMPILER=icpc \
         -DICB=ON \
         -DCMAKE_BUILD_TYPE=Release \
         .. 

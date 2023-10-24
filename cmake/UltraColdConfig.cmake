@@ -30,11 +30,20 @@ macro(ULTRACOLD_SETUP_TARGET target)
         # as the Intel one, plus link to MKL
         #--------------------------------------------
 
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
+
+        #---------------------------
+        # Set useful compiler flags
+        #---------------------------
+
         if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
         else()
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
         endif()
+
     endif()  
     
     
@@ -84,11 +93,20 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
         # as the Intel one, plus link to MKL
         #--------------------------------------------
 
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
+
+        #---------------------------
+        # Set useful compiler flags
+        #---------------------------
+
         if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
         else()
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
         endif()
+
     endif()    
     
     #----------------------------------------
@@ -104,10 +122,10 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
 
     if(WHICH_CLUSTER STREQUAL "justus")
         find_package(CUDA 11.0 REQUIRED)
-        enable_language(CUDA)
         set(CMAKE_CUDA_COMPILER nvcc)
     endif()
 
+    enable_language(CUDA)
     set_target_properties(${target} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
     target_include_directories(${target} PUBLIC "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
     target_link_libraries(${target} PUBLIC "${CUDA_LIBRARIES}" -lcufft)
