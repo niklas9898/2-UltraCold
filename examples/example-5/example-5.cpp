@@ -23,6 +23,7 @@
  */
 
 #include "UltraCold.hpp"
+#include "boost/math/special_functions/bessel.hpp"
 
 using namespace UltraCold;
 
@@ -51,6 +52,15 @@ void Dipoles2d::write_operator_splitting_output(size_t iteration_number,
 }
 
 int main() {
+
+    double order = 1.0;
+    int Nr = 5;
+    std::vector<double> zeros;
+    boost::math::cyl_bessel_j_zero(order, 1, Nr+1, std::back_inserter(zeros));
+    for (int i = 0; i < zeros.size(); i++)
+    {
+        std::cout << zeros[i] << std::endl;
+    }
 
     Tools::InputParser ip("example-5.prm");
 

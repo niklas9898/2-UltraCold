@@ -23,6 +23,7 @@
 #include "simple_kernels.cuh"
 #include "solver_kernels.cuh"
 #include "DFtCalculator.hpp"
+#include "boost/math/special_functions/bessel.hpp"
 
 #define PI 3.1415926535897932384626433
 #define TWOPI (2*PI)
@@ -380,6 +381,8 @@ namespace UltraCold
                                          Vector<double> &Vext,
                                          double scattering_length,
                                          double dipolar_length,
+                                         double theta_mu,
+                                         double phi_mu,
                                          Vector<double> dipolar_cutoff,
                                          bool add_lhy_correction)
         {
@@ -514,10 +517,176 @@ namespace UltraCold
             if(dipolar_cutoff[0] == dipolar_cutoff[1] && dipolar_cutoff[1] == dipolar_cutoff[2])
             {
                 // prepare dipole potential with spherical cutoff
+                 for (int i = 0; i < nx; ++i)
+                 for (int j = 0; j < ny; ++j)
+                 for (int k = 0; k < nz; ++k)
+                    {
+                       double aux = TWOPI * (
+                                 kx[i]*sin(theta_mu)*cos(phi_mu) +
+                                 ky[j]*sin(theta_mu)*sin(phi_mu)+
+                                 kz[k]*cos(theta_mu));
+                         double aux1 = TWOPI * sqrt(pow(kx[i], 2) + pow(ky[j], 2) + pow(kz[k], 2));
+                         // double aux2 = sqrt(pow(kx[i], 2) + pow(ky[j], 2) + pow(kz[k], 2));
+                         if (aux1 <= 1.E-6)
+                            Vtilde(i,j,k) = 0;
+                            //Vtilde(i,j,k) = -4*PI*scattering_length*epsilon_dd_d[0];
+                             //Vtilde(i,j,k) = -4*PI*scattering_length*epsilon_dd_d[0]*(1+3*cos(dipolar_cutoff[0]*aux1)/(pow(dipolar_cutoff[0]*aux1,2))-3*sin(dipolar_cutoff[0]*aux1)/(pow(dipolar_cutoff[0]*aux1,3)));
+                            //std::cout << Vtilde(i,j,k) << std::endl;
+                         else
+                            // Vtilde(i,j,k) = 12.0 * PI * scattering_length * epsilon_dd_d[0] * (pow(aux/aux1,2)-1.0/3.0);
+                             Vtilde(i,j,k) = 12.0 * PI * scattering_length * epsilon_dd_d[0] * (pow(aux/aux1,2)-1.0/3.0)*(1+3*cos(dipolar_cutoff[0]*aux1)/(pow(dipolar_cutoff[0]*aux1,2))-3*sin(dipolar_cutoff[0]*aux1)/(pow(dipolar_cutoff[0]*aux1,3)));
+                    }
+                
             }
             else if(dipolar_cutoff[0] == dipolar_cutoff[1])
             {
                 // prepare dipole potential with cylindrical cutoff (cylinder along the z-axis)
+                
+                int number_zeros = nx;
+                double order = 0.0;
+                int n_radial_int = 10;
+
+                std::vector<double> zeros;
+                // calculates zeroes of the J_0 bessel function
+                boost::math::cyl_bessel_j_zero(order, 1, number_zeros, std::back_inserter(zeros));
+
+                Vector<double> radial_vec(number_zeros);
+                Vector<double> freq_vec(number_zeros);
+                for (size_t i = 0; i < number_zeros; ++i)
+                    {
+                        radial_vec[i] = zeros[i]/dipolar_cutoff[0];
+                    }
+
+                double d_cyl_height = 2 * dipolar_cutoff[2]/ nz;
+                double k_max = nz*TWOPI/(4*dipolar_cutoff[2]);
+                double k_step = 2*k_max / (nz);
+
+                Vector<double> kz_cutoff(nz);
+                for (size_t i = 0; i < (nz); ++i) 
+                    {
+                    kz_cutoff[i] = -k_max + i * k_step;
+                    }
+                Vector<double> k_squared(number_zeros, nz);
+                for (size_t i = 0; i < number_zeros; ++i)
+                for (size_t j = 0; j < nz; ++j)
+                        {
+                        k_squared(i,j) = std::pow(radial_vec(i),2) +
+                                         std::pow(kz_cutoff(j),2);
+                        }
+
+                Vector<double> cosine_sq(number_zeros, nz);
+                Vector<double> sine_sq(number_zeros, nz);
+                for (size_t i = 0; i < number_zeros; ++i)
+                for (size_t j = 0; j < nz; ++j)
+                    {
+                    cosine_sq(i,j) = kz_cutoff(i)/k_squared(i,j);
+                    sine_sq(i,j) = 1 - cosine_sq(i,j);
+                    }
+
+                // analytical cutoff for slice 0<z<Zmax, 0<r<Inf
+                Vector<double> Vtilde_temp(number_zeros,nz);
+
+                // change prefactor to 36.0 * PI * scattering_length *
+                for (size_t i = 0; i < number_zeros; ++i)
+                for (size_t j = 0; j < nz; ++j)
+                    {
+                        Vtilde_temp(i,j) = 36.0 * PI * scattering_length *(cosine_sq(i,j)-1/3
+                                        +exp(-dipolar_cutoff[2]*kz_cutoff(j))   
+                                        *(sine_sq(i,j)*cos(dipolar_cutoff[2]*kz_cutoff(j))    
+                                        -sqrt(sine_sq(i,j)*cosine_sq(i,j))*sin(dipolar_cutoff[2]*kz_cutoff(j))));
+                    }
+                // integration over 0<z<Zmax, Rmax<r<R_lim*Rmax
+                int R_lim = 2000;
+                double dr =(R_lim-1)*dipolar_cutoff[0]/n_radial_int;
+                Vector<double> radial_integration_coordinate(n_radial_int);
+                for (size_t i = 0; i < n_radial_int; ++i)
+                    {
+                        radial_integration_coordinate(i) = (static_cast<double>(i + 1) - 0.5) * dr + dipolar_cutoff[0];
+                    }
+                Vector<double> height_integration_coordinate(nz);
+                for (size_t i = 0; i < nz; ++i)
+                    {
+                        height_integration_coordinate(i) = (static_cast<double>(i + 1) - 0.5) * dz/2 ;
+                    }
+
+                Vector<double> r_squared(n_radial_int, nz);
+                for (size_t i = 0; i < n_radial_int; ++i)
+                for (size_t j = 0; j < nz; ++j)
+                        {
+                        r_squared(i,j) = std::pow(radial_integration_coordinate(i),2) +
+                                         std::pow(height_integration_coordinate(j),2);
+                        }
+                
+                Vector<double> interaction_real(n_radial_int, nz);
+
+                for (size_t i = 0; i < n_radial_int; ++i)
+                for (size_t j = 0; j < nz; ++j)
+                    {
+                        interaction_real(i,j) = (1-3*std::pow(height_integration_coordinate(j),2)/r_squared(i,j))/std::pow(r_squared(i,j), 3/2);
+                    }
+
+
+                Vector<double> besselr_interm (number_zeros*n_radial_int);
+                for (size_t j = 0; j < n_radial_int; ++j)
+                for (size_t i = 0; i < number_zeros; ++i)
+                    {
+                        besselr_interm(i*n_radial_int+j) = radial_integration_coordinate[j]*boost::math::cyl_bessel_j(0,radial_vec[i]*radial_integration_coordinate[j]) ;
+                    }
+                
+                Vector<double> besselr (number_zeros*n_radial_int, nz);
+                for (size_t i = 0; i < number_zeros*n_radial_int; ++i){
+                     // (for (size_t j = 0; j < number_zeros*n_radial_int; ++j){
+                    for (size_t k = 0; k < nz; ++k)
+                    {
+                        besselr(i, k) = besselr_interm(i)  ;
+                    }}
+                
+                Vector<double> igbz(nz, nz);
+                for (size_t i = 0; i < (nz); ++i) 
+                for (size_t j = 0; j < (nz); ++j) 
+                    {
+                    igbz(i,j) = cos(kz_cutoff(i)*height_integration_coordinate(j)) ;
+                    }
+
+
+                /*
+                for (size_t i = 0; i < number_zeros; ++i)
+                    {
+                        std::cout <<"Rad vec"<<radial_vec[i] << std::endl ;
+                    } 
+
+
+                 for (size_t i = 0; i < number_zeros; ++i)
+                    {
+                        std::cout << "Rad int coord"<< radial_integration_coordinate[i] << std::endl ;
+                    } 
+
+                for (size_t i = 0; i < number_zeros; ++i)
+                    {
+                        std::cout << "Rad int * Rad vec"<< radial_vec(i)*radial_integration_coordinate(i) << std::endl ;
+                    } 
+                /**/    
+                for (size_t i = 0; i < (nz); ++i) 
+                    {
+                    std::cout << height_integration_coordinate[i] << std::endl;
+                    }
+                /* 
+                for (size_t i = 0; i < nz; ++i)
+                for (size_t j = 0; j < nz*number_zeros; ++j)
+                    {
+                    {
+                        integrand =   
+                        for (size_t k = 0; i < number_zeros; ++i)
+                            {
+
+
+                        
+                            } 
+
+                    }
+                    } 
+                    */
+
             }
             else
             {

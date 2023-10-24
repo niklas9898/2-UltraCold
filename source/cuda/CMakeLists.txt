@@ -6,6 +6,7 @@
 # Create the library
 #-----------------------
 
+
 add_library(cudaSolvers
         STATIC
         ${CMAKE_SOURCE_DIR}/source/cuda/simple_kernels.cu
@@ -29,6 +30,16 @@ target_include_directories(cudaSolvers
 #---------------------------
 
 target_link_libraries(cudaSolvers PUBLIC utilities)
+
+
+find_package(Boost 1.80 REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
+target_link_libraries(cudaSolvers PUBLIC ${Boost_LIBRARIES})
+
+message(STATUS "${Boost_FOUND}")
+message(STATUS "${Boost_INCLUDE_DIRS}")
+
+
 
 #----------------------
 # Link CUDA libraries
@@ -71,5 +82,7 @@ install(TARGETS cudaSolvers
         EXPORT UltraColdTargets
 )
 
+
 install(FILES cudaGPSolver.cuh DESTINATION include)
 install(FILES cudaDipolarGPSolver.cuh DESTINATION include)
+

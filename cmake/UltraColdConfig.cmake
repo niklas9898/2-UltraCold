@@ -105,4 +105,9 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
     target_link_libraries(${target} PUBLIC cudaSolvers)
     target_link_libraries(${target} PUBLIC utilities)
 
+
+    find_package(Boost 1.80 REQUIRED)
+    include_directories(${Boost_INCLUDE_DIRS})
+    target_link_libraries(${target} PUBLIC ${Boost_LIBRARIES})
+
 endmacro()

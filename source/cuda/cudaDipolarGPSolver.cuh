@@ -24,6 +24,7 @@
 #include "cuComplex.h"
 #include "Vector.hpp"
 
+
 namespace UltraCold
 {
 
@@ -69,6 +70,8 @@ namespace UltraCold
                                 Vector<double>&               Vext,
                                 double                        scattering_length,
                                 double                        dipolar_length,
+                                double theta_mu,
+                                double phi_mu,
                                 Vector<double>                dipolar_cutoff,
                                 bool add_lhy_correction);  // 3D problems with dipolar cutoff
 

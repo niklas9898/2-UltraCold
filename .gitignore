@@ -19,3 +19,5 @@ labyrinth_CUDA/*
 labyrinth_modified/*
 toy_models/*
 energy_dif/*
+minicode/*
+test_cutoff/*

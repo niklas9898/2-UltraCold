@@ -26,13 +26,16 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
         NO_SET_AND_CHECK_MACRO
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
         )
+
 install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/UltraColdTargets.cmake
         DESTINATION cmake
         )
+
 install(FILES
         ${CMAKE_SOURCE_DIR}/cmake/UltraColdConfig.cmake
         DESTINATION cmake
         )
+
 export(EXPORT UltraColdTargets
         FILE "${CMAKE_CURRENT_BINARY_DIR}/UltraColdTargets.cmake")
