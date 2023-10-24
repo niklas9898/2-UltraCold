@@ -42,21 +42,33 @@ if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
 endif()
 
 #---------------------------------------------
+# Decide on which cluster to build
+# possible options: "helix", "einc"
+#---------------------------------------------
+
+option(WHICH_CLUSTER "Build on Cluster: " "helix")
+
+#---------------------------------------------
 # Decide whether or not to build with CUDA
 #---------------------------------------------
 
 option(ULTRACOLD_WITH_CUDA "Build UltraCold with CUDA" OFF)
 
-if(ULTRACOLD_WITH_CUDA)
-	message(STATUS "Building UltraCold with cuda libraries")
-	set(CMAKE_CUDA_COMPILER nvcc)
-endif()
-
 #---------------------------------------------------
 # Set the name, language and version of the project
 #---------------------------------------------------
 
-project(UltraCold LANGUAGES CUDA C CXX Fortran VERSION 1.0)
+if(ULTRACOLD_WITH_CUDA)
+	message(STATUS "Building UltraCold with cuda libraries")
+	if(WHICH_CLUSTER STREQUAL "justus")
+            project(UltraCold LANGUAGES CUDA C CXX Fortran VERSION 1.0)
+            set(CMAKE_CUDA_COMPILER nvcc)            
+        else()
+
+            project(UltraCold LANGUAGES C CXX Fortran VERSION 1.0)
+            enable_language(CUDA)
+        endif()
+endif()
 
 #---------------------------------------
 # Set the default build type as Release

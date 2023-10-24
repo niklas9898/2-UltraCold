@@ -16,23 +16,28 @@ include(UltraColdTargets)
 
 macro(ULTRACOLD_SETUP_TARGET target)
 
-    #-------------------------------------
-    # Set the compilers as the Intel ones
-    #-------------------------------------
+    if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
+        #-------------------------------
+	# Explicitly set the compilers
+	#-------------------------------
 
-    set(CMAKE_CXX_COMPILER icpc)
-    set(CMAKE_C_COMPILER icc)
+	set(CMAKE_CXX_COMPILER icpc)
+	set(CMAKE_C_COMPILER icc)
+	set(CMAKE_Fortran_COMPILER ifort)
 
-    #----------------------------------------------
-    # Set the correct flags for linking with mkl
-    #----------------------------------------------
+        #--------------------------------------------
+        # Still need a c++ compiler. Set it still as
+        # as the Intel one, plus link to MKL
+        #--------------------------------------------
 
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
-    else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
-    endif()
-
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
+        else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
+        endif()
+    endif()  
+    
+    
     #----------------------------------------
     # Set the fundamental include directory
     #----------------------------------------
@@ -65,20 +70,27 @@ endmacro()
 
 macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
 
-    #--------------------------------------------
-    # Still need a c++ compiler. Set it still as
-    # as the Intel one, plus link to MKL
-    #--------------------------------------------
+    if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
+        #-------------------------------
+	# Explicitly set the compilers
+	#-------------------------------
 
-    set(CMAKE_CXX_COMPILER icpc)
-    set(CMAKE_C_COMPILER icc)
+	set(CMAKE_CXX_COMPILER icpc)
+	set(CMAKE_C_COMPILER icc)
+	set(CMAKE_Fortran_COMPILER ifort)
 
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
-    else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
-    endif()
+        #--------------------------------------------
+        # Still need a c++ compiler. Set it still as
+        # as the Intel one, plus link to MKL
+        #--------------------------------------------
 
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
+        else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
+        endif()
+    endif()    
+    
     #----------------------------------------
     # Set the fundamental include directory
     #----------------------------------------
@@ -90,9 +102,12 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
     # CUDA resolve its own symbols.
     #----------------------------------------------------------
 
-    find_package(CUDA 11.0 REQUIRED)
-    enable_language(CUDA)
-    set(CMAKE_CUDA_COMPILER nvcc)
+    if(WHICH_CLUSTER STREQUAL "justus")
+        find_package(CUDA 11.0 REQUIRED)
+        enable_language(CUDA)
+        set(CMAKE_CUDA_COMPILER nvcc)
+    endif()
+
     set_target_properties(${target} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
     target_include_directories(${target} PUBLIC "${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
     target_link_libraries(${target} PUBLIC "${CUDA_LIBRARIES}" -lcufft)

@@ -59,10 +59,14 @@ set_target_properties(cudaSolvers
 # Suppress generation of specific code for specific architecture
 #-----------------------------------------------------------------
 
-set_property(TARGET cudaSolvers
-        PROPERTY CUDA_ARCHITECTURES
-        OFF
-)
+if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
+    set_property(TARGET cudaSolvers
+            PROPERTY CUDA_ARCHITECTURES
+            OFF
+    )
+endif()
+
+
 
 #---------------------------------------
 # Enable separable compilation
@@ -85,4 +89,3 @@ install(TARGETS cudaSolvers
 
 install(FILES cudaGPSolver.cuh DESTINATION include)
 install(FILES cudaDipolarGPSolver.cuh DESTINATION include)
-
