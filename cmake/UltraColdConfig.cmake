@@ -121,8 +121,12 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
     target_link_libraries(${target} PUBLIC utilities)
 
 
-    find_package(Boost 1.80 REQUIRED)
+    find_package(Boost REQUIRED)
     include_directories(${Boost_INCLUDE_DIRS})
     target_link_libraries(${target} PUBLIC ${Boost_LIBRARIES})
+
+    find_package(OpenMP REQUIRED)
+    target_link_libraries(${target} PUBLIC OpenMP::OpenMP_CXX)
+
 
 endmacro()

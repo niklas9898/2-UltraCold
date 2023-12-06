@@ -2,6 +2,9 @@
 # Configure and build cuda libraries for Ultracold
 #######################################################
 
+
+
+
 #-----------------------
 # Create the library
 #-----------------------
@@ -32,13 +35,25 @@ target_include_directories(cudaSolvers
 target_link_libraries(cudaSolvers PUBLIC utilities)
 
 
-find_package(Boost 1.80 REQUIRED)
+find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 target_link_libraries(cudaSolvers PUBLIC ${Boost_LIBRARIES})
 
 message(STATUS "${Boost_FOUND}")
 message(STATUS "${Boost_INCLUDE_DIRS}")
 
+
+#--------------
+# Find OpenMP
+#--------------
+
+find_package(OpenMP REQUIRED)
+if (OPENMP_FOUND)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+include_directories(SYSTEM ${OpenMP_CXX_INCLUDE_DIRS})
+target_link_libraries(cudaSolvers PUBLIC OpenMP::OpenMP_CXX)
+message(STATUS "Cudacode ${OPENMP_FOUND}")
 
 
 #----------------------

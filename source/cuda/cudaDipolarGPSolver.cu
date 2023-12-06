@@ -24,7 +24,11 @@
 #include "solver_kernels.cuh"
 #include "DFtCalculator.hpp"
 #include "boost/math/special_functions/bessel.hpp"
-
+#include <iostream>
+#include <fstream>
+#include <boost/math/quadrature/gauss_kronrod.hpp>
+#include <chrono>
+#include <omp.h>
 #define PI 3.1415926535897932384626433
 #define TWOPI (2*PI)
 
@@ -336,6 +340,32 @@ namespace UltraCold
                             Vtilde(i,j,k) =
                                     12.0 * PI * scattering_length * epsilon_dd_d[0] * (pow(aux/aux1,2)-1.0/3.0);
                     }
+
+            
+            std::ofstream outputFile("Vtilde_y0.txt", std::ofstream::app);
+                    if (outputFile.is_open()) {
+                    for (size_t i = 0; i < (nx); ++i){
+                    for (size_t k = 0; k < (nz); ++k) 
+                            {
+                               
+                                outputFile << Vtilde(i,0,k) << ' ';
+
+                            }
+                            outputFile << std::endl;
+                    }
+
+                    outputFile.close(); // Close the file after the loop
+                    std::cout << "Data appended to output.txt." << std::endl;
+                    } 
+                    
+                    else {
+                        std::cerr << "Unable to open the output file." << std::endl;
+                    }
+
+
+
+
+
             cudaMalloc(&Vtilde_d,npoints*sizeof(cuDoubleComplex));
             cudaMemcpy(Vtilde_d,Vtilde.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
             cudaMalloc(&Phi_dd_d,npoints*sizeof(cuDoubleComplex));
@@ -526,14 +556,11 @@ namespace UltraCold
                                  ky[j]*sin(theta_mu)*sin(phi_mu)+
                                  kz[k]*cos(theta_mu));
                          double aux1 = TWOPI * sqrt(pow(kx[i], 2) + pow(ky[j], 2) + pow(kz[k], 2));
-                         // double aux2 = sqrt(pow(kx[i], 2) + pow(ky[j], 2) + pow(kz[k], 2));
                          if (aux1 <= 1.E-6)
                             Vtilde(i,j,k) = 0;
-                            //Vtilde(i,j,k) = -4*PI*scattering_length*epsilon_dd_d[0];
-                             //Vtilde(i,j,k) = -4*PI*scattering_length*epsilon_dd_d[0]*(1+3*cos(dipolar_cutoff[0]*aux1)/(pow(dipolar_cutoff[0]*aux1,2))-3*sin(dipolar_cutoff[0]*aux1)/(pow(dipolar_cutoff[0]*aux1,3)));
-                            //std::cout << Vtilde(i,j,k) << std::endl;
+                           
                          else
-                            // Vtilde(i,j,k) = 12.0 * PI * scattering_length * epsilon_dd_d[0] * (pow(aux/aux1,2)-1.0/3.0);
+
                              Vtilde(i,j,k) = 12.0 * PI * scattering_length * epsilon_dd_d[0] * (pow(aux/aux1,2)-1.0/3.0)*(1+3*cos(dipolar_cutoff[0]*aux1)/(pow(dipolar_cutoff[0]*aux1,2))-3*sin(dipolar_cutoff[0]*aux1)/(pow(dipolar_cutoff[0]*aux1,3)));
                     }
                 
@@ -542,10 +569,10 @@ namespace UltraCold
             {
                 // prepare dipole potential with cylindrical cutoff (cylinder along the z-axis)
 
-                
+                /*
                 int number_zeros = nx;
                 double order = 0.0;
-                int n_radial_int = 10;
+                int n_radial_int = 5000;
 
                 std::vector<double> zeros;
                 // calculates zeroes of the J_0 bessel function
@@ -565,7 +592,7 @@ namespace UltraCold
                 Vector<double> kz_cutoff(nz);
                 for (size_t i = 0; i < (nz); ++i) 
                     {
-                    kz_cutoff[i] = -k_max + i * k_step;
+                    kz_cutoff(i) = -k_max + i * k_step;
                     }
                 Vector<double> k_squared(number_zeros, nz);
                 for (size_t i = 0; i < number_zeros; ++i)
@@ -580,25 +607,28 @@ namespace UltraCold
                 for (size_t i = 0; i < number_zeros; ++i)
                 for (size_t j = 0; j < nz; ++j)
                     {
-                    cosine_sq(i,j) = kz_cutoff(i)/k_squared(i,j);
+                    cosine_sq(i,j) = std::pow(kz_cutoff(j),2)/k_squared(i,j);
                     sine_sq(i,j) = 1 - cosine_sq(i,j);
                     }
 
                 // analytical cutoff for slice 0<z<Zmax, 0<r<Inf
-                Vector<double> Vtilde_temp(number_zeros,nz);
+                Vector<double> Vtilde_temp(number_zeros, number_zeros ,nz);
 
                 // change prefactor to 36.0 * PI * scattering_length *
                 for (size_t i = 0; i < number_zeros; ++i)
                 for (size_t j = 0; j < nz; ++j)
                     {
-                        Vtilde_temp(i,j) = 36.0 * PI * scattering_length *(cosine_sq(i,j)-1/3
-                                        +exp(-dipolar_cutoff[2]*kz_cutoff(j))   
+                        Vtilde_temp(i,0,j) = 12 * PI * scattering_length * epsilon_dd_d[0] *(cosine_sq(i,j)-1.0/3
+                                        +exp(-dipolar_cutoff[2]*radial_vec(i))   
                                         *(sine_sq(i,j)*cos(dipolar_cutoff[2]*kz_cutoff(j))    
                                         -sqrt(sine_sq(i,j)*cosine_sq(i,j))*sin(dipolar_cutoff[2]*kz_cutoff(j))));
                     }
                 // integration over 0<z<Zmax, Rmax<r<R_lim*Rmax
-                int R_lim = 2000;
+                
+                int R_lim = 5000;
                 double dr =(R_lim-1)*dipolar_cutoff[0]/n_radial_int;
+                double dz_int =dipolar_cutoff[2]/nz;
+
                 Vector<double> radial_integration_coordinate(n_radial_int);
                 for (size_t i = 0; i < n_radial_int; ++i)
                     {
@@ -607,7 +637,7 @@ namespace UltraCold
                 Vector<double> height_integration_coordinate(nz);
                 for (size_t i = 0; i < nz; ++i)
                     {
-                        height_integration_coordinate(i) = (static_cast<double>(i + 1) - 0.5) * dz/2 ;
+                        height_integration_coordinate(i) = (static_cast<double>(i + 1) - 0.5) * dz_int ;
                     }
 
                 Vector<double> r_squared(n_radial_int, nz);
@@ -619,12 +649,13 @@ namespace UltraCold
                         }
                 
                 Vector<double> interaction_real(n_radial_int, nz);
-
+                
+                for (size_t j = 0; j < nz; ++j){
                 for (size_t i = 0; i < n_radial_int; ++i)
-                for (size_t j = 0; j < nz; ++j)
                     {
-                        interaction_real(i,j) = (1-3*std::pow(height_integration_coordinate(j),2)/r_squared(i,j))/std::pow(r_squared(i,j), 3/2);
+                        interaction_real(i,j) = (1-3*std::pow(height_integration_coordinate(j),2)/r_squared(i,j))/(std::pow(r_squared(i,j), 3.0/2));
                     }
+                }
 
 
                 Vector<double> besselr_interm (number_zeros*n_radial_int);
@@ -648,45 +679,290 @@ namespace UltraCold
                     {
                     igbz(i,j) = cos(kz_cutoff(i)*height_integration_coordinate(j)) ;
                     }
-
-
-                /*
-                for (size_t i = 0; i < number_zeros; ++i)
+                */
+    
+                for (int i = 0; i < nx; ++i)
+                for (int j = 0; j < ny; ++j)
+                for (int k = 0; k < nz; ++k)
                     {
-                        std::cout <<"Rad vec"<<radial_vec[i] << std::endl ;
-                    } 
+                       double aux = TWOPI * (
+                                 kx[i]*sin(theta_mu)*cos(phi_mu) +
+                                 ky[j]*sin(theta_mu)*sin(phi_mu)+
+                                 kz[k]*cos(theta_mu));
+                         double aux1 = TWOPI * sqrt(pow(kx[i], 2) + pow(ky[j], 2) + pow(kz[k], 2));
 
-
-                 for (size_t i = 0; i < number_zeros; ++i)
-                    {
-                        std::cout << "Rad int coord"<< radial_integration_coordinate[i] << std::endl ;
-                    } 
-
-                for (size_t i = 0; i < number_zeros; ++i)
-                    {
-                        std::cout << "Rad int * Rad vec"<< radial_vec(i)*radial_integration_coordinate(i) << std::endl ;
-                    } 
-                /**/    
-                for (size_t i = 0; i < (nz); ++i) 
-                    {
-                    std::cout << height_integration_coordinate[i] << std::endl;
-                    }
-                /* 
-                for (size_t i = 0; i < nz; ++i)
-                for (size_t j = 0; j < nz*number_zeros; ++j)
-                    {
-                    {
-                        integrand =   
-                        for (size_t k = 0; i < number_zeros; ++i)
-                            {
-
-
+                         double aux2 = TWOPI * sqrt(pow(kx[i], 2) + pow(ky[j], 2));
+                         if (aux1 <= 1.E-6)
+                            Vtilde(i,j,k) = 12.0 * PI * scattering_length * epsilon_dd_d[0] * ((-1.0/3.0)+std::exp(-dipolar_cutoff(2)*aux2) * (cos(dipolar_cutoff(2)*kz(k))));
+                         else
                         
-                            } 
-
+                             Vtilde(i,j,k) = 12.0 * PI * scattering_length * epsilon_dd_d[0] * ((pow(aux/aux1,2)-1.0/3.0)+std::exp(-dipolar_cutoff(2)*aux2) * ((1-std::pow(aux/aux1,2))*cos(dipolar_cutoff(2)*kz(k))-sqrt(1-std::pow(aux/aux1,2))*std::pow(aux/aux1,2)*sin(dipolar_cutoff(2)*kz(k))));
                     }
+                
+
+                // Integral term
+
+                Vector<double> integral(nx/2 +1, ny/2 +1, nz/2 +1);
+
+                auto f = [](double rho, double height, double kx_val, double ky_val, double kz_val) {
+                    return rho*std::cos(kz_val*height)*(std::pow(rho, 2)- 2*std::pow(height,2))/std::pow(std::pow(rho,2)+std::pow(height,2), 5.0/2)*boost::math::cyl_bessel_j(0,std::sqrt(std::pow(kx_val,2)+std::pow(ky_val,2))*rho);
+                };
+
+            
+            int threads = omp_get_num_threads();
+            int max_threads = omp_get_max_threads();
+            #pragma omp parallel
+            { 
+                #pragma omp single
+                printf("max_threads = %d\n", max_threads);
+            }
+            /*
+             #pragma omp parallel
+            {
+                int thread_id = omp_get_thread_num();
+                printf("Hello from thread %d\n", thread_id);
+            }*/
+            //int thread_id;
+      
+            auto start_total = std::chrono::high_resolution_clock::now();
+
+                #pragma omp parallel for collapse(3)
+                for (std::size_t i = 0; i < nx/2 + 1; ++i) {
+                for (std::size_t j = 0; j < ny/2 + 1; ++j) {
+                for (std::size_t k = 0; k < nz/2 + 1; ++k) {
+                    // auto start = std::chrono::high_resolution_clock::now();
+                    auto integrate_function = [&](double rho) {
+                        auto g = [&](double height) {
+                            return f(rho, height, TWOPI*kx(i),TWOPI*ky(j), TWOPI*kz(k));
+                        };
+                        return boost::math::quadrature::gauss_kronrod<double, 61>::integrate(g, 0, dipolar_cutoff(2), 15);
+                    };
+
+                    double error;
+                    double Q = boost::math::quadrature::gauss_kronrod<double, 15>::integrate(integrate_function, dipolar_cutoff(0), std::numeric_limits<double>::infinity(), 15, 1e-9, &error);
+                    
+                    
+                    // Save the result in the 'results' matrix
+                    integral(i,j,k) = Q;
+                    //auto stop = std::chrono::high_resolution_clock::now();
+                    //auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+                    //std::cout << duration.count() << ' ' << "i=" << i << "j=" << j <<"k=" << k <<std::endl;
+                }
+                }
+                }
+            
+                auto stop_total = std::chrono::high_resolution_clock::now();
+                auto duration_total = std::chrono::duration_cast<std::chrono::seconds>(stop_total - start_total);
+            
+            // Use cylindrical symmetry to mirror the potential on the axes
+
+            auto start2 = std::chrono::high_resolution_clock::now();
+            #pragma omp parallel for collapse(3)
+            for (size_t i = 0; i <= nx / 2; ++i) {
+                for (size_t j = 0; j <= ny / 2; ++j) {
+                    for (size_t k = 0; k <= nz / 2; ++k) {
+                        Vtilde(i, j, k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral(i, j, k);
+                    }
+                }
+            }
+
+            #pragma omp parallel for collapse(3)
+            for (size_t i = nx - 1; i >= nx / 2; --i) {
+                for (size_t j = 0; j <= ny / 2; ++j) {
+                    for (size_t k = 0; k <= nz / 2; ++k) {
+                        Vtilde(i, j, k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral((nx - i) % nx, j, k);
+                    }
+                }
+            }
+
+            #pragma omp parallel for collapse(3)
+            for (size_t i = 0; i <= nx / 2; ++i) {
+                for (size_t j = ny - 1; j >= ny / 2; --j) {
+                    for (size_t k = 0; k <= nz / 2; ++k) {
+                        Vtilde(i, j, k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral(i,(ny - j) % ny,k);
+                    }
+                }
+            }
+
+            #pragma omp parallel for collapse(3)
+            for (size_t i = 0; i <= nx / 2; ++i) {
+                for (size_t j = 0; j <= ny / 2; ++j) {
+                    for (size_t k = nz - 1; k >= nz / 2; --k) {
+                        Vtilde(i, j, k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral(i,j,(nz - k) % nz);
+                    }
+                }
+            }
+
+            #pragma omp parallel for collapse(3)
+            for (size_t i = nx - 1; i >= nx / 2; --i) {
+                for (size_t j = ny - 1; j >= ny / 2; --j) {
+                    for (size_t k = 0; k <= nz / 2; ++k) {
+                        Vtilde(i, j, k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral((nx - i) % nx,(ny - j) % ny,k);
+                    }
+                }
+            }
+
+            #pragma omp parallel for collapse(3)
+            for (size_t i = nx - 1; i >= nx / 2; --i) {
+                for (size_t j = 0; j <= ny / 2; ++j) {
+                    for (size_t k = nz - 1; k >= nz / 2; --k) {
+                        Vtilde(i, j, k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral((nx - i) % nx,j,(nz - k) % nz);
+                    }
+                }
+            }
+
+            #pragma omp parallel for collapse(3)
+            for (size_t i = 0; i <= nx / 2; ++i) {
+                for (size_t j = ny - 1; j >= ny / 2; --j) {
+                    for (size_t k = nz - 1; k >= nz / 2; --k) {
+                        Vtilde(i, j, k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral(i,(ny - j) % ny,(nz - k) % nz);
+                    }
+                }
+            }
+
+            #pragma omp parallel for collapse(3)
+            for (size_t i = nx - 1; i >= nx / 2; --i) {
+                for (size_t j = ny - 1; j >= ny / 2; --j) {
+                    for (size_t k = nz - 1; k >= nz / 2; --k) {
+                        Vtilde(i, j, k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral((nx - i) % nx,(ny - j) % ny,(nz - k) % nz);
+                    }
+                }
+            }
+
+            auto stop2 = std::chrono::high_resolution_clock::now();
+            auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(stop2 - start2);
+           
+
+            std::ofstream outputFile("time.txt", std::ofstream::app);
+            if (outputFile.is_open()) {
+                               
+                    outputFile<< "Time taken for integral: "<< duration_total.count() << " seconds" << std::endl;
+                    outputFile<< "Time taken for copies: "<< duration2.count() << " milliseconds" << std::endl;
+                    outputFile.close(); // Close the file after the loop
+                    std::cout << "Data appended to time.txt." << std::endl;
                     } 
+                    
+                    else {
+                        std::cerr << "Unable to open the output file." << std::endl;
+                    }
+
+
+                            
+                            // outputFile<<"j=" << j << std::endl;
+
+
+            /*
+            for (std::size_t i = 0; i < nx; ++i) {
+                for (std::size_t j = 0; j < ny; ++j) {
+                for (std::size_t k = 0; k < nz; ++k) {
+                    Vtilde(i,j,k) -= 12*PI*scattering_length*epsilon_dd_d[0]*integral(i,j,k) ;
+                }
+                }
+                }
+                
+                Vector<double> test_matrix (n_radial_int, nz);
+                Vector<double> besselr_container(n_radial_int, nz);
+                double sum;
+                for (size_t i = 0; i < (nz); ++i){
+
+                    for (size_t j = 0; j < (nz); ++j){  
+                        for (size_t k = 0; k < (n_radial_int); ++k)
+                            {
+                                test_matrix(k,j) = igbz(i,j);
+                            }
+                    }
+
+                    for  (size_t chunk = 0; chunk < (number_zeros); ++chunk){
+                        sum = 0;
+                        for (size_t j = 0; j < n_radial_int; ++j){
+                            for (size_t k = 0; k < nz; ++k){
+                                besselr_container(j,k) = besselr(j+chunk*n_radial_int, k)*test_matrix(j,k)*interaction_real(j,k);
+                                sum += besselr_container(j,k);
+                            }
+                        }
+                        
+                        for (size_t j = 0; j < number_zeros; ++j){
+                            for (size_t k = 0; k < nz; ++k){
+                                Vtilde_temp(j,0,k) -= 12*PI*scattering_length*epsilon_dd_d[0]*sum*dr*dz_int;
+                            }
+                        }
+                         
+                       for (size_t j = 0; j < nx; ++j)
+                       for (size_t k = 0; k < ny; ++k)
+                       for (size_t l = 0; l < nz; ++l)
+                       {
+                            Vtilde(j,k,l) -= 12*PI*scattering_length*epsilon_dd_d[0]*sum*dr*dz_int;
+                       }
+                       
+                    }
+                  }
+                    
+                for (size_t j = 0; j < nx; ++j)
+                       for (size_t k = 0; k < ny; ++k)
+                       for (size_t l = 0; l < nz; ++l)
+                       {
+                            Vtilde(j,k,l) = Vtilde_temp(j,0,l);
+                       }
+                */
+
+    /*
+                 std::ofstream outputFile("Vtilde_nocut.txt", std::ofstream::app);
+                    if (outputFile.is_open()) {
+                    for (size_t i = 0; i < (number_zeros); ++i){
+                    //for (size_t j = 0; j < (ny); ++j) {
+                    for (size_t k = 0; k < (nz); ++k) 
+                            {
+                               
+                                outputFile << 12 * PI * scattering_length * epsilon_dd_d[0] *(cosine_sq(i,k)-1.0/3) << ' ';
+
+                            }
+                            outputFile << std::endl;
+                    //}
+                    }
+
+                    outputFile.close(); // Close the file after the loop
+                    std::cout << "Data appended to output.txt." << std::endl;
+                    } 
+                    
+                    else {
+                        std::cerr << "Unable to open the output file." << std::endl;
+                    }*/
+
+                    /*
+                    std::ofstream outputFile("output_igrandbase_2.txt", std::ofstream::app);
+                    if (outputFile.is_open()) {
+                    for (size_t j = 0; j < (n_radial_int); ++j){
+                    for (size_t k = 0; k < (nz); ++k) 
+                            {
+                               
+                                outputFile << test_matrix(j,k)*interaction_real(j,k) << ' ';
+
+                            }
+                            outputFile << std::endl;
+                    }
+
+                    outputFile.close(); // Close the file after the loop
+                    std::cout << "Data appended to output.txt." << std::endl;
+                    } 
+                    
+                    else {
+                        std::cerr << "Unable to open the output file." << std::endl;
+                    }
+
+                            
+                            // outputFile<<"j=" << j << std::endl;
+
+
                     */
+                        
+                    
+                
+                    
+            
+
+            
+            // leave this bracket here!!!!
+
             }
             else
             {

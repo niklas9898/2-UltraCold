@@ -23,3 +23,5 @@ toy_models/*
 energy_dif/*
 minicode/*
 test_cutoff/*
+test_cyl_code/*
+examples/example-2/* 

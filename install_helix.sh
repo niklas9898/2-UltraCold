@@ -13,7 +13,7 @@ cmake -DULTRACOLD_WITH_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES="all-major" -DCMAKE_C_
 
 #-DCMAKE_CUDA_PTX_COMPILATION=OFF ..
 
-make install
+make install 
 
 cd ..
 
