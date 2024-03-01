@@ -23,6 +23,7 @@
 #include "simple_kernels.cuh"
 #include "solver_kernels.cuh"
 #include "DFtCalculator.hpp"
+#include <typeinfo>
 
 #define PI 3.1415926535897932384626433
 #define TWOPI (2*PI)
@@ -70,6 +71,7 @@ namespace UltraCold
             cudaMalloc(&wave_function_d,     npoints*sizeof(cuDoubleComplex));
             cudaMalloc(&hpsi_d,              npoints*sizeof(cuDoubleComplex));
             cudaMalloc(&ft_wave_function_d,  npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&rand_noise_d,  npoints*sizeof(cuDoubleComplex));
 
             // Allocate space for device and managed scalars
             cudaMalloc(&scattering_length_d,sizeof(double));
@@ -181,6 +183,11 @@ namespace UltraCold
 
             // Initialize the wave function for the output
             wave_function_output.reinit(nx,ny);
+
+            // Create random number generator
+            curandCreateGenerator(&gen_cuda, CURAND_RNG_PSEUDO_XORWOW);
+            curandSetPseudoRandomGeneratorSeed(gen_cuda, time(NULL));
+
 
         }
 
@@ -366,6 +373,10 @@ namespace UltraCold
 
             // Initialize the wave function for the output
             wave_function_output.reinit(nx,ny,nz);
+
+            // Create random number generator
+            curandCreateGenerator(&gen_cuda, CURAND_RNG_PSEUDO_XORWOW);
+            curandSetPseudoRandomGeneratorSeed(gen_cuda, time(NULL));
 
         }
 
@@ -617,6 +628,10 @@ namespace UltraCold
             cudaFree(Phi_dd_d);
             cudaFree(epsilon_dd_d);
             cudaFree(gamma_epsilondd_d);
+            cudaFree(gamma_diss_d);
+            cudaFree(T_diss_d);
+            curandDestroyGenerator(gen_cuda);
+            cudaFree(rand_noise_d);
         }
 
         /**
@@ -940,6 +955,113 @@ namespace UltraCold
                 SimpleKernels::rescale<<<gridSize,blockSize>>>(wave_function_d,1./npoints,npoints);
                 cudaDeviceSynchronize();
 
+            }
+            cudaFree(c_density_d);
+        }
+
+        /**
+         * @brief Real-time operator splitting overload for driven dissipative systems
+         */
+
+        void DipolarGPSolver::run_operator_splitting(int number_of_time_steps,
+                                                     double time_step,
+                                                     double gamma_diss,
+                                                     double T_diss,
+                                                     std::ostream &output_stream,
+                                                     int write_output_every,
+						                             int iteration_twa)
+        {
+            // Copy input data into the device
+            cudaMallocManaged(&time_step_d,sizeof(double));
+            cudaMemcpy(time_step_d,&time_step,sizeof(double),cudaMemcpyHostToDevice);
+
+            cudaMallocManaged(&gamma_diss_d,sizeof(double));
+            cudaMallocManaged(&T_diss_d,sizeof(double));
+            cudaMemcpy(gamma_diss_d,&gamma_diss,sizeof(double),cudaMemcpyHostToDevice);
+            cudaMemcpy(T_diss_d,&T_diss,sizeof(double),cudaMemcpyHostToDevice);
+
+
+            // Initialize the fft plan required for the calculation of the laplacian
+            cufftHandle ft_plan;
+            if(problem_is_2d)
+                cufftPlan2d(&ft_plan,nx,ny,CUFFT_Z2Z);
+            else if(problem_is_3d)
+                cufftPlan3d(&ft_plan,nx,ny,nz,CUFFT_Z2Z);
+            cuDoubleComplex* c_density_d;
+            cudaMalloc(&c_density_d,npoints*sizeof(cuDoubleComplex));
+
+            // Initialize other variables
+            this->write_output_every=write_output_every;
+	        this->iteration_twa=iteration_twa;
+
+            //----------------------------------------------------//
+            //    Here the operator-splitting iterations start    //
+            //----------------------------------------------------//
+            for (size_t it = 0; it < number_of_time_steps; ++it)
+            {
+
+                // Write output starting from the very first iteration
+                if(it % write_output_every == 0)
+                    write_operator_splitting_output(it,output_stream);
+
+                // Calculate the current value of dipolar potential
+                SimpleKernels::square_vector<<<gridSize,blockSize>>>(c_density_d,wave_function_d,npoints);
+                cudaDeviceSynchronize();
+                cufftExecZ2Z(ft_plan,c_density_d,ft_wave_function_d,CUFFT_FORWARD);
+                cudaDeviceSynchronize();
+                SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,
+                                                                               Vtilde_d,
+                                                                               npoints);
+                cudaDeviceSynchronize();
+                cufftExecZ2Z(ft_plan,ft_wave_function_d,Phi_dd_d,CUFFT_INVERSE);
+                cudaDeviceSynchronize();
+                SimpleKernels::rescale<<<gridSize,blockSize>>>(Phi_dd_d,1./npoints,npoints);
+                cudaDeviceSynchronize();
+
+                // Solve step-1 of operator splitting, i.e. the one NOT involving Fourier transforms
+                SolverKernels::step_1_operator_splitting_dipolars<<<gridSize,blockSize>>>(wave_function_d,
+                                                                                            external_potential_d,
+                                                                                            Phi_dd_d,
+                                                                                            time_step_d,
+                                                                                            scattering_length_d,
+                                                                                            gamma_epsilondd_d,
+                                                                                            gamma_diss_d,
+                                                                                            npoints);
+                cudaDeviceSynchronize();
+
+                // Solve step-2 of operator splitting, i.e. the one actually involving Fourier transforms
+                cufftExecZ2Z(ft_plan,wave_function_d,ft_wave_function_d,CUFFT_FORWARD);
+                cudaDeviceSynchronize();
+
+
+                // generate noise with standard deviation damping*temperature
+                curandGenerateNormalDouble(gen_cuda, (double *)rand_noise_d, 2*npoints, 0., sqrt(gamma_diss_d[0]*T_diss_d[0]*time_step_d[0]));
+                cudaDeviceSynchronize();
+                SimpleKernels::vector_addition<<<gridSize,blockSize>>>(ft_wave_function_d,rand_noise_d,npoints);
+                cudaDeviceSynchronize();
+
+                SolverKernels::aux_step_2_operator_splitting<<<gridSize,blockSize>>>(ft_wave_function_d,
+                                                                                       kmod2_d,
+                                                                                       time_step_d,
+                                                                                       gamma_diss_d,
+                                                                                       npoints);
+                cudaDeviceSynchronize();
+                cufftExecZ2Z(ft_plan,ft_wave_function_d,wave_function_d,CUFFT_INVERSE);
+                cudaDeviceSynchronize();
+                SimpleKernels::rescale<<<gridSize,blockSize>>>(wave_function_d,1./npoints,npoints);
+                cudaDeviceSynchronize();
+                
+                // Normalize the wave function
+                SimpleKernels::square_vector<<<gridSize,blockSize>>>(density_d,wave_function_d,npoints);
+                cudaDeviceSynchronize();
+                cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
+                cudaDeviceSynchronize();
+                norm_d[0] = norm_d[0]*dv;
+                SimpleKernels::rescale<<<gridSize,blockSize>>>(wave_function_d,
+                                                                 sqrt(initial_norm_d[0]/norm_d[0]),
+                                                                 npoints);
+                cudaDeviceSynchronize();
+                                
             }
             cudaFree(c_density_d);
         }

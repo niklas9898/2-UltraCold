@@ -22,6 +22,7 @@
 #include <cufft.h>
 #include <fstream>
 #include "cuComplex.h"
+#include <curand.h>
 #include "Vector.hpp"
 
 namespace UltraCold
@@ -102,6 +103,15 @@ namespace UltraCold
                                             std::ostream& output_stream,
                                             int write_output_every,
 					                        int iteration_twa = 0);
+                
+                // Overload to start operator splitting for driven dissipative time evolution
+                void run_operator_splitting(int number_of_time_steps,
+                                            double time_step,
+                                            double gamma_diss,
+                                            double T_diss,
+                                            std::ostream& output_stream,
+                                            int write_output_every,
+					                        int iteration_twa = 0);
 
                 void run_operator_splitting_faraday(int number_of_time_steps,
                                                     double time_step,
@@ -164,6 +174,11 @@ namespace UltraCold
                 cuDoubleComplex* Phi_dd_d;
                 double* epsilon_dd_d;
                 double* gamma_epsilondd_d;
+                double* gamma_diss_d;
+                double* T_diss_d;
+
+                curandGenerator_t gen_cuda;
+                cuDoubleComplex* rand_noise_d; // stores random noise
 
                 Vector<double> x_axis,y_axis,z_axis,r2mod,kx_axis,ky_axis,kz_axis;
                 Vector<std::complex<double>> Vtilde;   // This contains the Fourier transform of the dipolar potential

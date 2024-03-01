@@ -171,6 +171,36 @@ namespace UltraCold
         }
 
         /**
+         * @brief Solve step-1 operator splitting for dipolars - driven dissipative
+         *
+         * */
+
+        __global__ void step_1_operator_splitting_dipolars(cuDoubleComplex* psi,
+                                                           double* Vext,
+                                                           cuDoubleComplex* Phi_dd,
+                                                           double* time_step,
+                                                           double* scattering_length,
+                                                           double* gamma_epsilon_dd,
+                                                           double* gamma_diss,
+                                                           int size)
+        {
+            cuDoubleComplex aux;
+            double aux2;
+            double aux3;
+            int index = blockIdx.x * blockDim.x + threadIdx.x;
+            int stride = blockDim.x * gridDim.x;
+            for (int i = index; i < size; i += stride)
+            {
+                aux2 = cuCabs(psi[i]);
+                aux3 = Vext[i] + 4*PI*scattering_length[0]*pow(aux2,2)
+                       + Phi_dd[i].x + gamma_epsilon_dd[0]*pow(aux2,3);
+                aux.x = - time_step[0] * gamma_diss[0] * aux3;
+                aux.y = - time_step[0] * aux3;
+                psi[i] = cuCmul(psi[i],SimpleKernels::complex_exponential(aux));
+            }
+        }
+
+        /**
          *
          * @brief A useful help for step-2 of operator splitting
          *
@@ -187,6 +217,29 @@ namespace UltraCold
             int stride = blockDim.x * gridDim.x;
             for (int i = index; i < size; i += stride)
             {
+                aux.y = - 0.5 * time_step[0] * pow(TWOPI,2) * kmod2[i];
+                psitilde[i] = cuCmul(psitilde[i],SimpleKernels::complex_exponential(aux));
+            }
+        }
+
+        /**
+         *
+         * @brief A useful help for step-2 of operator splitting - driven dissipative
+         *
+         * */
+
+        __global__ void aux_step_2_operator_splitting(cuDoubleComplex* psitilde,
+                                                      double* kmod2,
+                                                      double* time_step,
+                                                      double* gamma_diss,
+                                                      int size)
+        {
+            cuDoubleComplex aux;
+            int index = blockIdx.x * blockDim.x + threadIdx.x;
+            int stride = blockDim.x * gridDim.x;
+            for (int i = index; i < size; i += stride)
+            {
+                aux.x = - 0.5 * time_step[0] * gamma_diss[0] * pow(TWOPI,2) * kmod2[i];
                 aux.y = - 0.5 * time_step[0] * pow(TWOPI,2) * kmod2[i];
                 psitilde[i] = cuCmul(psitilde[i],SimpleKernels::complex_exponential(aux));
             }

@@ -57,12 +57,25 @@ namespace UltraCold
                                                       double* kmod2,
                                                       double* time_step,
                                                       int size);
+        __global__ void aux_step_2_operator_splitting(cuDoubleComplex* psitilde,
+                                                      double* kmod2,
+                                                      double* time_step,
+                                                      double* gamma_diss,
+                                                      int size);
         __global__ void step_1_operator_splitting_dipolars(cuDoubleComplex* psi,
                                                            double* Vext,
                                                            cuDoubleComplex* Phi_dd,
                                                            double* time_step,
                                                            double* scattering_length,
                                                            double* gamma_epsilon_dd,
+                                                           int size);
+        __global__ void step_1_operator_splitting_dipolars(cuDoubleComplex* psi,
+                                                           double* Vext,
+                                                           cuDoubleComplex* Phi_dd,
+                                                           double* time_step,
+                                                           double* scattering_length,
+                                                           double* gamma_epsilon_dd,
+                                                           double* gamma_diss,
                                                            int size);
     } // SolverKernels
 } // UltraCold

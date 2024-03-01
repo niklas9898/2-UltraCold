@@ -127,6 +127,27 @@ namespace UltraCold
          *
          * */
 
+        __global__ void vector_addition(cuDoubleComplex* result,
+                                        cuDoubleComplex* input,
+                                        int size)
+        {
+            //cuDoubleComplex temp;
+            int index = blockIdx.x * blockDim.x + threadIdx.x;
+            int stride = blockDim.x * gridDim.x;
+            for (int i = index; i < size; i += stride)
+            {
+                //temp = result[i];
+                result[i].x = result[i].x + input[i].x;
+                result[i].y = result[i].y + input[i].y;
+            }
+        }
+
+        /**
+         *
+         * @brief Multiply two complex vectors. Overwrite the first one
+         *
+         * */
+
         __global__ void vector_multiplication(cuDoubleComplex* result,
                                               cuDoubleComplex* input,
                                               int size)

@@ -57,6 +57,9 @@ namespace UltraCold
                                        double* input1,
                                        cuDoubleComplex* input2,
                                        int size);
+        __global__ void vector_addition(cuDoubleComplex* result,
+                                        cuDoubleComplex* input,
+                                        int size);
         __global__ void vector_multiplication(cuDoubleComplex* result,
                                               cuDoubleComplex* input,
                                               int size);
