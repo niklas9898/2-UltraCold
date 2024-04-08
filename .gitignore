@@ -17,9 +17,9 @@ examples/supersolid_quench/*
 examples/faraday/*
 examples/cutoff/*
 examples/driven_dissipative/*
+examples/ntfp_paper/*
 quench/*
 labyrinth_CUDA/*
 labyrinth_modified/*
 toy_models/*
 energy_dif/*
-
