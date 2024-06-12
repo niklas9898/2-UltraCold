@@ -39,7 +39,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
     add_executable(example-6-debug example-6.cpp)
     ULTRACOLD_SETUP_TARGET_WITH_CUDA(example-6-debug)
 
-elseif(CMAKE_BUILD_TYPE MATCHES Release)
+else()
 
     message(STATUS "Building example-6 in Release mode\n")
     add_executable(example-6 example-6.cpp)

@@ -385,7 +385,7 @@ int main() {
     // The output will be written to the shell
     ////////////////////////////////////////////////
 
-    gp_solver.set_tw_initial_conditions(false);
+    gp_solver.set_tw_initial_conditions(false, generator);
     gp_solver.run_operator_splitting(number_of_real_time_steps,time_step,std::cout,write_output_every);
 
     return 0;
