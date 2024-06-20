@@ -21,14 +21,6 @@ set (CMAKE_GENERATOR "Unix Makefiles" CACHE INTERNAL "" FORCE)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
 
-	#-------------------------------
-	# Explicitly set the compilers
-	#-------------------------------
-
-	set(CMAKE_CXX_COMPILER icpc)
-	set(CMAKE_C_COMPILER icc)
-	set(CMAKE_Fortran_COMPILER ifort)
-
 	#---------------------------
 	# Set useful compiler flags
 	#---------------------------
@@ -54,20 +46,25 @@ option(WHICH_CLUSTER "Build on Cluster: " "helix")
 
 option(ULTRACOLD_WITH_CUDA "Build UltraCold with CUDA" OFF)
 
+
 #---------------------------------------------------
 # Set the name, language and version of the project
 #---------------------------------------------------
 
-if(ULTRACOLD_WITH_CUDA)
-	message(STATUS "Building UltraCold with cuda libraries")
-	if(WHICH_CLUSTER STREQUAL "justus")
-            project(UltraCold LANGUAGES CUDA C CXX Fortran VERSION 1.0)
-            set(CMAKE_CUDA_COMPILER nvcc)            
-        else()
 
-            project(UltraCold LANGUAGES C CXX Fortran VERSION 1.0)
-            enable_language(CUDA)
-        endif()
+project(UltraCold LANGUAGES C CXX Fortran VERSION 1.0)
+
+if(ULTRACOLD_WITH_CUDA)
+
+	include(CheckLanguage)
+
+	if(WHICH_CLUSTER STREQUAL "justus")
+		set(CMAKE_CUDA_COMPILER nvcc)
+	endif()
+
+	check_language(CUDA)
+	message(STATUS "Building UltraCold with CUDA")
+	enable_language(CUDA)
 endif()
 
 #---------------------------------------

@@ -55,6 +55,12 @@ Then, enter the directory UltraCold, and follow the usual steps required to buil
     make
     make install
 
+To select a specific compiler toolkit, set the following environment variables, e.g. for Intel:
+
+    export FC=ifort
+    export CC=icc
+    export CXX=icpc
+
 If you want to build also the libraries that use GPU acceleration, you have to pass an additional flag to cmake, as follows
 
     cd UltraCold
