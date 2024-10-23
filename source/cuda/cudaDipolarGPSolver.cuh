@@ -52,6 +52,16 @@ namespace UltraCold
                                 double                        scattering_length,
                                 double                        dipolar_length,
                                 double                        alpha);  // 2D problems
+                // for advective velocity field
+                // DipolarGPSolver(Vector<double>&               x,
+                //                 Vector<double>&               y,
+                //                 Vector<std::complex<double>>& psi_0,
+                //                 Vector<double>&               Vext,
+                //                 Vector<std::complex<double>>& velocity_x,
+                //                 Vector<std::complex<double>>& velocity_y,
+                //                 double                        scattering_length,
+                //                 double                        dipolar_length,
+                //                 double                        alpha);  // 2D problems
                 DipolarGPSolver(Vector<double>&               x,
                                 Vector<double>&               y,
                                 Vector<double>&               z,
@@ -87,6 +97,15 @@ namespace UltraCold
                                                                                      double beta,
                                                                                      std::ostream& output_stream,
                                                                                      int write_output_every);
+
+                // // Overload for advective gradient descent with velocity field
+                // std::tuple<Vector<std::complex<double>>,double> run_gradient_descent(int    max_num_iter,
+                //                                                                      double alpha,
+                //                                                                      double beta,
+                //                                                                      Vector<std::complex<double>>& velocity_x,
+                //                                                                      Vector<std::complex<double>>& velocity_y,
+                //                                                                      std::ostream& output_stream,
+                //                                                                      int write_output_every);
 
                 // Solve the GPE in real-time using the classical operator-splitting method.
                 // The intermediate PDE is solved using simply Fourier transforms
@@ -161,6 +180,8 @@ namespace UltraCold
                 double* ky_axis_d;
                 double* kz_axis_d;
                 double* kmod2_d;
+                // cuDoubleComplex* ikx_d;
+                // cuDoubleComplex* iky_d;
                 double* r2mod_d;
                 double* chemical_potential_d;
                 double* scattering_length_d;

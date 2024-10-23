@@ -18,6 +18,9 @@ examples/faraday/*
 examples/cutoff/*
 examples/driven_dissipative/*
 examples/ntfp_paper/*
+examples/energy_imag_propag/*
+examples/clebsch_initial_conditions/*
+examples/testing/*
 quench/*
 labyrinth_CUDA/*
 labyrinth_modified/*

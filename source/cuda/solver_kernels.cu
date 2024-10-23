@@ -93,6 +93,55 @@ namespace UltraCold
             }
         }
 
+        // /**
+        //  *
+        //  * @brief Overload for advective velocity field in second step in the operator splitting method for gradient descent for dipolars
+        //  *
+        //  * */
+
+        // __global__ void step_2_dipolar_hpsi(cuDoubleComplex* hpsi,
+        //                                     cuDoubleComplex* psi,
+        //                                     double* Vext,
+        //                                     cuDoubleComplex* Phi_dd,
+        //                                     double* scattering_length,
+        //                                     cuDoubleComplex* velocity_x_d,
+        //                                     cuDoubleComplex* velocity_y_d,
+        //                                     cuDoubleComplex* grad_psi_x_d,
+        //                                     cuDoubleComplex* grad_psi_y_d,
+        //                                     double* gamma_epsilon_dd,
+        //                                     int size)
+        // {
+
+        //     int index = blockIdx.x * blockDim.x + threadIdx.x;
+        //     int stride = blockDim.x * gridDim.x;
+        //     double aux=0.0;
+        //     for (int i = index; i < size; i += stride)
+        //     {
+        //         aux= cuCabs(psi[i]);
+        //         hpsi[i].x = hpsi[i].x +
+        //                     (Vext[i]
+        //                      + 4*PI*scattering_length[0]*pow(aux,2)
+        //                      + Phi_dd[i].x
+        //                      + gamma_epsilon_dd[0]*pow(aux,3)
+        //                      + pow(velocity_x_d[i].x,2) / 2
+        //                      + pow(velocity_y_d[i].x,2) / 2
+        //                     ) * psi[i].x
+        //                     - velocity_x_d[i].x*grad_psi_x_d[i].y
+        //                     - velocity_y_d[i].x*grad_psi_y_d[i].y;
+        //         hpsi[i].y = hpsi[i].y +
+        //                     (Vext[i]
+        //                      + 4*PI*scattering_length[0]*pow(aux,2)
+        //                      + Phi_dd[i].x
+        //                      + gamma_epsilon_dd[0]*pow(aux,3)
+        //                      + pow(velocity_x_d[i].x,2) / 2
+        //                      + pow(velocity_y_d[i].x,2) / 2
+        //                     ) *
+        //                     psi[i].y
+        //                     + velocity_x_d[i].x*grad_psi_x_d[i].x
+        //                     + velocity_y_d[i].x*grad_psi_y_d[i].x;
+        //     }
+        // }
+
 
         /**
          * @brief Gradient descent plus heavy-ball step
