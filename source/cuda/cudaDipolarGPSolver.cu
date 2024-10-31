@@ -970,7 +970,7 @@ namespace UltraCold
                 cudaDeviceSynchronize();
                 cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,chemical_potential_d,npoints);
                 cudaDeviceSynchronize();
-		        std::cout << norm_d[0] << std::endl;
+		        // std::cout << norm_d[0] << std::endl;
 		        // std::cout << chemical_potential_d[0] << std::endl;
                 chemical_potential_d[0] = chemical_potential_d[0]*dv/norm_d[0];
 
