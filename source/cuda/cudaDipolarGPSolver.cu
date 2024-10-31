@@ -19,11 +19,11 @@
 #include "cudaDipolarGPSolver.cuh"
 #include "mesh_fourier_space.hpp"
 #include "DataWriter.hpp"
-#include "cub/cub.cuh"
+#include <cub/cub.cuh>
 #include "simple_kernels.cuh"
 #include "solver_kernels.cuh"
 #include "DFtCalculator.hpp"
-// #include <typeinfo>
+#include <typeinfo>
 
 #define PI 3.1415926535897932384626433
 #define TWOPI (2*PI)
@@ -67,25 +67,22 @@ namespace UltraCold
             // Allocate memory for all device arrays
             cudaMalloc(&external_potential_d,npoints*sizeof(double));
             cudaMalloc(&kmod2_d,             npoints*sizeof(double));
-            cudaMalloc(&density_d,           npoints*sizeof(double));
-            cudaMalloc(&wave_function_d,     npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&density_d, npoints*sizeof(double));
+            cudaMalloc(&wave_function_d, npoints*sizeof(cuDoubleComplex));
             cudaMalloc(&hpsi_d,              npoints*sizeof(cuDoubleComplex));
             cudaMalloc(&ft_wave_function_d,  npoints*sizeof(cuDoubleComplex));
             cudaMalloc(&rand_noise_d,  npoints*sizeof(cuDoubleComplex));
 
             // Allocate space for device and managed scalars
             cudaMalloc(&scattering_length_d,sizeof(double));
-            cudaMallocManaged(&norm_d,              sizeof(double));
-            cudaMallocManaged(&initial_norm_d,      sizeof(double));
+            cudaMallocManaged(&norm_d, sizeof(double));
+            cudaMallocManaged(&initial_norm_d, sizeof(double));
             cudaMallocManaged(&chemical_potential_d,sizeof(double));
 
-            // cudaDeviceSynchronize();
             // Get the first necessary copies of input data from host to device
             cudaMemcpy(external_potential_d,Vext.data(),       npoints*sizeof(double),         cudaMemcpyHostToDevice);
-            // cudaDeviceSynchronize();
-            cudaMemcpy(wave_function_d,     psi_0.data(),      npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
-            // cudaDeviceSynchronize();
-
+            cudaMemcpy(wave_function_d, psi_0.data(), npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+            
             // Initialize the mesh in Fourier space, and copy it to the device
             Vector<double> kx(nx);
             Vector<double> ky(ny);
@@ -104,52 +101,23 @@ namespace UltraCold
             dx = x(1)-x(0);
             dy = y(1)-y(0);
             dv = dx*dy;
-            std::cout << "volume element: " << dv << std::endl;
-
-// Issues below !!!!!!!
-/////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////
-
-            cudaDeviceSynchronize();
-            cudaError_t err;
 
             // Initialize the device reduce kernel
             cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
-            err = cudaDeviceSynchronize();
-            if (err != cudaSuccess) {
-                std::cerr << "CUDA malloc failed: " << cudaGetErrorString(err) << std::endl;
-            }
-
-            std::cout << "size of temporary storage: " << size_temporary_storage << std::endl;
-
-            // Allocate temporary storage memory, required for reduction kernels
-
-            err = cudaMalloc(&temporary_storage_d,size_temporary_storage);
-            if (err != cudaSuccess) {
-                std::cerr << "CUDA malloc failed: " << cudaGetErrorString(err) << std::endl;
-            }
-
-            // cudaMalloc(&temporary_storage_d,size_temporary_storage);
             cudaDeviceSynchronize();
-
+            
+            // Allocate temporary storage memory, required for reduction kernels
+            cudaMalloc(&temporary_storage_d,size_temporary_storage);
+            cudaDeviceSynchronize();
+           
             // Calculate initial norm
             calculate_density(density_d,wave_function_d,npoints);
             cudaDeviceSynchronize();
-            std::cout << "Initial norm: " << norm_d[0] << std::endl;
-            cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
+            cub::DeviceReduce::Sum(temporary_storage_d, size_temporary_storage, density_d, norm_d, npoints);
             cudaDeviceSynchronize();
-            std::cout << "Initial norm: " << norm_d[0] << std::endl;
             norm_d[0]=norm_d[0]*dv;
             initial_norm_d[0]=norm_d[0];
             std::cout << "Initial norm: " << initial_norm_d[0] << std::endl;
-
-            // std::cout << "Density first value: " << density_d[0] << std::endl;
-            std::cout << "number of points: " << npoints << std::endl;
-
-            
-/////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////
-
 
             // Initialize the wave function to return as a result
             result_wave_function.reinit(nx,ny);
@@ -240,192 +208,190 @@ namespace UltraCold
 
         }
 
-        // /**
-        //  * @brief Constructor for 2d problems with advective velocity field
-        //  */
+        /**
+         * @brief Constructor for 2d problems with advective velocity field
+         */
 
-        // DipolarGPSolver::DipolarGPSolver(Vector<double> &x,
-        //                                  Vector<double> &y,
-        //                                  Vector<std::complex<double>> &psi_0,
-        //                                  Vector<double> &Vext,
-        //                                  Vector<std::complex<double>>& velocity_x,
-        //                                  Vector<std::complex<double>>& velocity_y,
-        //                                  double scattering_length,
-        //                                  double dipolar_length,
-        //                                  double alpha)
-        // {
+        DipolarGPSolver::DipolarGPSolver(Vector<double> &x,
+                                         Vector<double> &y,
+                                         Vector<std::complex<double>> &psi_0,
+                                         Vector<double> &Vext,
+                                         Vector<std::complex<double>>& velocity_x,
+                                         Vector<std::complex<double>>& velocity_y,
+                                         double scattering_length,
+                                         double dipolar_length,
+                                         double alpha)
+        {
 
-        //     // Check the order and extent of the Vectors provided
-        //     assert(x.order()==1);
-        //     assert(y.order()==1);
-        //     assert(psi_0.order() == 2);
-        //     assert(Vext.order() == 2);
-        //     nx=x.extent(0);
-        //     ny=y.extent(0);
-        //     assert(psi_0.extent(0) == nx);
-        //     assert(psi_0.extent(1) == ny);
-        //     assert(Vext.extent(0) == nx);
-        //     assert(Vext.extent(1) == ny);
-        //     problem_is_2d=true;
-        //     npoints=nx*ny;
+            // Check the order and extent of the Vectors provided
+            assert(x.order()==1);
+            assert(y.order()==1);
+            assert(psi_0.order() == 2);
+            assert(Vext.order() == 2);
+            nx=x.extent(0);
+            ny=y.extent(0);
+            assert(psi_0.extent(0) == nx);
+            assert(psi_0.extent(1) == ny);
+            assert(Vext.extent(0) == nx);
+            assert(Vext.extent(1) == ny);
+            problem_is_2d=true;
+            npoints=nx*ny;
 
-        //     // Initialize the thread grid, i.e. choose the number of cuda threads per block and the number of blocks.
-        //     blockSize = 512;
-        //     gridSize = (npoints + blockSize - 1) / blockSize;
+            // Initialize the thread grid, i.e. choose the number of cuda threads per block and the number of blocks.
+            blockSize = 512;
+            gridSize = (npoints + blockSize - 1) / blockSize;
 
-        //     // Allocate memory for all device arrays
-        //     cudaMalloc(&external_potential_d,npoints*sizeof(double));
-        //     cudaMalloc(&kmod2_d,             npoints*sizeof(double));
-        //     cudaMalloc(&ikx_d,             npoints*sizeof(cuDoubleComplex));
-        //     cudaMalloc(&iky_d,             npoints*sizeof(cuDoubleComplex));
-        //     cudaMalloc(&density_d,           npoints*sizeof(double));
-        //     cudaMalloc(&wave_function_d,     npoints*sizeof(cuDoubleComplex));
-        //     cudaMalloc(&hpsi_d,              npoints*sizeof(cuDoubleComplex));
-        //     cudaMalloc(&ft_wave_function_d,  npoints*sizeof(cuDoubleComplex));
-        //     cudaMalloc(&rand_noise_d,  npoints*sizeof(cuDoubleComplex));
+            // Allocate memory for all device arrays
+            cudaMalloc(&external_potential_d,npoints*sizeof(double));
+            cudaMalloc(&kmod2_d,             npoints*sizeof(double));
+            cudaMalloc(&ikx_d,             npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&iky_d,             npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&density_d,           npoints*sizeof(double));
+            cudaMalloc(&wave_function_d,     npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&hpsi_d,              npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&ft_wave_function_d,  npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&rand_noise_d,  npoints*sizeof(cuDoubleComplex));
 
-        //     // Allocate space for device and managed scalars
-        //     cudaMalloc(&scattering_length_d,sizeof(double));
-        //     cudaMallocManaged(&norm_d,              sizeof(double));
-        //     cudaMallocManaged(&initial_norm_d,      sizeof(double));
-        //     cudaMallocManaged(&chemical_potential_d,sizeof(double));
+            // Allocate space for device and managed scalars
+            cudaMalloc(&scattering_length_d,sizeof(double));
+            cudaMallocManaged(&norm_d,              sizeof(double));
+            cudaMallocManaged(&initial_norm_d,      sizeof(double));
+            cudaMallocManaged(&chemical_potential_d,sizeof(double));
 
-        //     // Get the first necessary copies of input data from host to device
-        //     cudaMemcpy(external_potential_d,Vext.data(),       npoints*sizeof(double),         cudaMemcpyHostToDevice);
-        //     cudaMemcpy(wave_function_d,     psi_0.data(),      npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
-        //     std::cout << "First entry of field " << psi_0[0] << std::endl;
+            // Get the first necessary copies of input data from host to device
+            cudaMemcpy(external_potential_d,Vext.data(),       npoints*sizeof(double),         cudaMemcpyHostToDevice);
+            cudaMemcpy(wave_function_d,     psi_0.data(),      npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
 
-        //     // Initialize the mesh in Fourier space, and copy it to the device
-        //     Vector<double> kx(nx);
-        //     Vector<double> ky(ny);
-        //     Vector<double> kmod2(nx,ny);
-        //     Vector<std::complex<double>> ikx(nx,ny);
-        //     Vector<std::complex<double>> iky(nx,ny);
-        //     std::complex<double> ci={0.0,1.0};
-        //     create_mesh_in_Fourier_space(x,y,kx,ky);
-        //     for (size_t i = 0; i < nx; ++i)
-        //         for (size_t j = 0; j < ny; ++j)
-        //         {
-        //             kmod2(i,j) = std::pow(kx(i),2) + std::pow(ky(j),2);
-        //             ikx(i,j) = ci*kx(i);
-        //             iky(i,j) = ci*ky(j);
-        //         }
+            // Initialize the mesh in Fourier space, and copy it to the device
+            Vector<double> kx(nx);
+            Vector<double> ky(ny);
+            Vector<double> kmod2(nx,ny);
+            Vector<std::complex<double>> ikx(nx,ny);
+            Vector<std::complex<double>> iky(nx,ny);
+            std::complex<double> ci={0.0,1.0};
+            create_mesh_in_Fourier_space(x,y,kx,ky);
+            for (size_t i = 0; i < nx; ++i)
+                for (size_t j = 0; j < ny; ++j)
+                {
+                    kmod2(i,j) = std::pow(kx(i),2) + std::pow(ky(j),2);
+                    ikx(i,j) = ci*kx(i);
+                    iky(i,j) = ci*ky(j);
+                }
                     
-        //     cudaMemcpy(kmod2_d,kmod2.data(),npoints*sizeof(double),cudaMemcpyHostToDevice);
-        //     cudaMemcpy(ikx_d,ikx.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
-        //     cudaMemcpy(iky_d,iky.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+            cudaMemcpy(kmod2_d,kmod2.data(),npoints*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMemcpy(ikx_d,ikx.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+            cudaMemcpy(iky_d,iky.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
 
-        //     // Initialize space steps
-        //     dx = x(1)-x(0);
-        //     dy = y(1)-y(0);
-        //     dv = dx*dy;
+            // Initialize space steps
+            dx = x(1)-x(0);
+            dy = y(1)-y(0);
+            dv = dx*dy;
 
-        //     // Initialize the device reduce kernel
-        //     cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
-        //     cudaDeviceSynchronize();
+            // Initialize the device reduce kernel
+            cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
+            cudaDeviceSynchronize();
 
-        //     // Allocate temporary storage memory, required for reduction kernels
-        //     cudaMalloc(&temporary_storage_d,size_temporary_storage);
-        //     cudaDeviceSynchronize();
+            // Allocate temporary storage memory, required for reduction kernels
+            cudaMalloc(&temporary_storage_d,size_temporary_storage);
+            cudaDeviceSynchronize();
 
-        //     // Calculate initial norm
-        //     calculate_density(density_d,wave_function_d,npoints);
-        //     cudaDeviceSynchronize();
-        //     cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
-        //     cudaDeviceSynchronize();
-        //     norm_d[0]=norm_d[0]*dv;
-        //     initial_norm_d[0]=norm_d[0];
-        //     std::cout << "Initial norm: " << initial_norm_d[0] << std::endl;
-        //     std::cout << "Volume element: " << dv << std::endl;
+            // Calculate initial norm
+            calculate_density(density_d,wave_function_d,npoints);
+            cudaDeviceSynchronize();
+            cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
+            cudaDeviceSynchronize();
+            norm_d[0]=norm_d[0]*dv;
+            initial_norm_d[0]=norm_d[0];
+            std::cout << "Initial norm: " << initial_norm_d[0] << std::endl;
 
-        //     // Initialize the wave function to return as a result
-        //     result_wave_function.reinit(nx,ny);
+            // Initialize the wave function to return as a result
+            result_wave_function.reinit(nx,ny);
 
-        //     // Initialize the host vectors containing the mesh axis. This can be useful in particular for data output
-        //     x_axis.reinit(nx);
-        //     y_axis.reinit(ny);
-        //     x_axis=x;
-        //     y_axis=y;
-        //     kx_axis.reinit(nx);
-        //     ky_axis.reinit(ny);
-        //     kx_axis=kx;
-        //     ky_axis=ky;
-        //     cudaMalloc(&x_axis_d,nx*sizeof(double));
-        //     cudaMalloc(&y_axis_d,ny*sizeof(double));
-        //     cudaMemcpy(x_axis_d,x_axis.data(),nx*sizeof(double),cudaMemcpyHostToDevice);
-        //     cudaMemcpy(y_axis_d,y_axis.data(),ny*sizeof(double),cudaMemcpyHostToDevice);
-        //     cudaMalloc(&kx_axis_d,nx*sizeof(double));
-        //     cudaMalloc(&ky_axis_d,ny*sizeof(double));
-        //     cudaMemcpy(kx_axis_d,kx_axis.data(),nx*sizeof(double),cudaMemcpyHostToDevice);
-        //     cudaMemcpy(ky_axis_d,ky_axis.data(),ny*sizeof(double),cudaMemcpyHostToDevice);
-        //     r2mod.reinit(nx,ny);
-        //     for(int i = 0; i < nx; ++i)
-        //         for(int j = 0; j < ny; ++j)
-        //             r2mod(i,j) = std::pow(x(i),2)+std::pow(y(j),2);
-        //     cudaMalloc(&r2mod_d,npoints*sizeof(double));
-        //     cudaMemcpy(r2mod_d,r2mod.data(),npoints*sizeof(double),cudaMemcpyHostToDevice);
+            // Initialize the host vectors containing the mesh axis. This can be useful in particular for data output
+            x_axis.reinit(nx);
+            y_axis.reinit(ny);
+            x_axis=x;
+            y_axis=y;
+            kx_axis.reinit(nx);
+            ky_axis.reinit(ny);
+            kx_axis=kx;
+            ky_axis=ky;
+            cudaMalloc(&x_axis_d,nx*sizeof(double));
+            cudaMalloc(&y_axis_d,ny*sizeof(double));
+            cudaMemcpy(x_axis_d,x_axis.data(),nx*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMemcpy(y_axis_d,y_axis.data(),ny*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMalloc(&kx_axis_d,nx*sizeof(double));
+            cudaMalloc(&ky_axis_d,ny*sizeof(double));
+            cudaMemcpy(kx_axis_d,kx_axis.data(),nx*sizeof(double),cudaMemcpyHostToDevice);
+            cudaMemcpy(ky_axis_d,ky_axis.data(),ny*sizeof(double),cudaMemcpyHostToDevice);
+            r2mod.reinit(nx,ny);
+            for(int i = 0; i < nx; ++i)
+                for(int j = 0; j < ny; ++j)
+                    r2mod(i,j) = std::pow(x(i),2)+std::pow(y(j),2);
+            cudaMalloc(&r2mod_d,npoints*sizeof(double));
+            cudaMemcpy(r2mod_d,r2mod.data(),npoints*sizeof(double),cudaMemcpyHostToDevice);
 
-        //     // Initialize the Fourier transform of the dipolar potential
+            // Initialize the Fourier transform of the dipolar potential
 
-        //     double epsilon_dd = 0.0;
-        //     if(scattering_length != 0)
-        //         epsilon_dd = dipolar_length/scattering_length;
+            double epsilon_dd = 0.0;
+            if(scattering_length != 0)
+                epsilon_dd = dipolar_length/scattering_length;
 
-        //     Vtilde.reinit(nx,ny);
-        //     for (int i = 0; i < nx; ++i)
-        //         for (int j = 0; j < ny; ++j)
-        //         {
-        //             double qd = TWOPI * kx[i] / sqrt(2);
-        //             double q  = TWOPI * sqrt(pow(kx[i], 2) + pow(ky[j], 2)) / sqrt(2);
-        //             // double value =
-        //             //         sqrt(8*PI) * scattering_length * epsilon_dd *
-        //             //         (
-        //             //                 (-1 + 3*sqrt(PI) * pow(qd,2)/q * exp(pow(q,2)) * erfc(q)) * pow(sin(alpha),2) +
-        //             //                 ( 2 - 3*sqrt(PI) * q * exp(pow(q,2)) * erfc(q)) * pow(cos(alpha),2)
-        //             //         );
+            Vtilde.reinit(nx,ny);
+            for (int i = 0; i < nx; ++i)
+                for (int j = 0; j < ny; ++j)
+                {
+                    double qd = TWOPI * kx[i] / sqrt(2);
+                    double q  = TWOPI * sqrt(pow(kx[i], 2) + pow(ky[j], 2)) / sqrt(2);
+                    // double value =
+                    //         sqrt(8*PI) * scattering_length * epsilon_dd *
+                    //         (
+                    //                 (-1 + 3*sqrt(PI) * pow(qd,2)/q * exp(pow(q,2)) * erfc(q)) * pow(sin(alpha),2) +
+                    //                 ( 2 - 3*sqrt(PI) * q * exp(pow(q,2)) * erfc(q)) * pow(cos(alpha),2)
+                    //         );
                     
-        //             // use erfcx to avoid nan's
-        //             double value =
-        //                     sqrt(8*PI) * scattering_length * epsilon_dd *
-        //                     (
-        //                             (-1 + 3*sqrt(PI) * pow(qd,2)/q * erfcx(q)) * pow(sin(alpha),2) +
-        //                             ( 2 - 3*sqrt(PI) * q * erfcx(q)) * pow(cos(alpha),2)
-        //                     );
-        //             if (isnan(value) && kx(i) == 0 && ky(j) == 0)
-        //             {
-        //                 Vtilde(i, j) = sqrt(8*PI)*scattering_length*epsilon_dd*(3*std::pow(std::cos(alpha),2)-1);
-        //             }
-        //             else if(isnan(value) && kx(i) != 0 && ky(j) != 0)
-        //             {
-        //                 Vtilde(i,j) = 0.0;
-        //             }
-        //             else
-        //             {
-        //                 Vtilde(i, j) = value;
-        //             }                        
-        //         }
+                    // use erfcx to avoid nan's
+                    double value =
+                            sqrt(8*PI) * scattering_length * epsilon_dd *
+                            (
+                                    (-1 + 3*sqrt(PI) * pow(qd,2)/q * erfcx(q)) * pow(sin(alpha),2) +
+                                    ( 2 - 3*sqrt(PI) * q * erfcx(q)) * pow(cos(alpha),2)
+                            );
+                    if (isnan(value) && kx(i) == 0 && ky(j) == 0)
+                    {
+                        Vtilde(i, j) = sqrt(8*PI)*scattering_length*epsilon_dd*(3*std::pow(std::cos(alpha),2)-1);
+                    }
+                    else if(isnan(value) && kx(i) != 0 && ky(j) != 0)
+                    {
+                        Vtilde(i,j) = 0.0;
+                    }
+                    else
+                    {
+                        Vtilde(i, j) = value;
+                    }                        
+                }
 
-        //     cudaMalloc(&Vtilde_d,npoints*sizeof(cuDoubleComplex));
-        //     cudaMemcpy(Vtilde_d,Vtilde.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
-        //     cudaMalloc(&Phi_dd_d,npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&Vtilde_d,npoints*sizeof(cuDoubleComplex));
+            cudaMemcpy(Vtilde_d,Vtilde.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+            cudaMalloc(&Phi_dd_d,npoints*sizeof(cuDoubleComplex));
 
-        //     // Initialize gamma(\epsilon_dd) for the LHY correction
-        //     cudaMallocManaged(&gamma_epsilondd_d,sizeof(double));
-        //     gamma_epsilondd_d[0] = 0.0;
+            // Initialize gamma(\epsilon_dd) for the LHY correction
+            cudaMallocManaged(&gamma_epsilondd_d,sizeof(double));
+            gamma_epsilondd_d[0] = 0.0;
 
-        //     // Scattering length is divided by sqrt(2PI) here, since in the propagators it is multiplied by 4PI
-        //     scattering_length *= 1./sqrt(2*PI);
-        //     cudaMemcpy(scattering_length_d, &scattering_length,1*sizeof(double),cudaMemcpyHostToDevice);
+            // Scattering length is divided by sqrt(2PI) here, since in the propagators it is multiplied by 4PI
+            scattering_length *= 1./sqrt(2*PI);
+            cudaMemcpy(scattering_length_d, &scattering_length,1*sizeof(double),cudaMemcpyHostToDevice);
 
-        //     // Initialize the wave function for the output
-        //     wave_function_output.reinit(nx,ny);
+            // Initialize the wave function for the output
+            wave_function_output.reinit(nx,ny);
 
-        //     // Create random number generator
-        //     curandCreateGenerator(&gen_cuda, CURAND_RNG_PSEUDO_XORWOW);
-        //     curandSetPseudoRandomGeneratorSeed(gen_cuda, time(NULL));
+            // Create random number generator
+            curandCreateGenerator(&gen_cuda, CURAND_RNG_PSEUDO_XORWOW);
+            curandSetPseudoRandomGeneratorSeed(gen_cuda, time(NULL));
 
 
-        // }
+        }
 
 
         /**
@@ -854,8 +820,8 @@ namespace UltraCold
             cudaFree(ky_axis_d);
             cudaFree(kz_axis_d);
             cudaFree(kmod2_d);
-            // cudaFree(ikx_d);
-            // cudaFree(iky_d);
+            cudaFree(ikx_d);
+            cudaFree(iky_d);
             cudaFree(r2mod_d);
             cudaFree(chemical_potential_d);
             cudaFree(scattering_length_d);
@@ -1031,179 +997,179 @@ namespace UltraCold
 
         }
 
-        // /**
-        //  *
-        //  * @brief Run the gradient descent with advective velocity field
-        //  *
-        //  * \warning No check of the residual!
-        //  *
-        //  * */
+        /**
+         *
+         * @brief Run the gradient descent with advective velocity field
+         *
+         * \warning No check of the residual!
+         *
+         * */
 
-        // std::tuple<Vector<std::complex<double>>, double>
-        // DipolarGPSolver::run_gradient_descent(int max_num_iter,
-        //                                       double alpha,
-        //                                       double beta,
-        //                                       Vector<std::complex<double>>& velocity_x,
-        //                                       Vector<std::complex<double>>& velocity_y,
-        //                                       std::ostream &output_stream,
-        //                                       int write_output_every)
+        std::tuple<Vector<std::complex<double>>, double>
+        DipolarGPSolver::run_gradient_descent(int max_num_iter,
+                                              double alpha,
+                                              double beta,
+                                              Vector<std::complex<double>>& velocity_x,
+                                              Vector<std::complex<double>>& velocity_y,
+                                              std::ostream &output_stream,
+                                              int write_output_every)
 
-        // {
-        //     // Initialize the fft plan required for the calculation of the laplacian
-        //     cufftHandle ft_plan;
-        //     if(problem_is_2d)
-        //         cufftPlan2d(&ft_plan,nx,ny,CUFFT_Z2Z);
-        //     else if(problem_is_3d)
-        //         cufftPlan3d(&ft_plan,nx,ny,nz,CUFFT_Z2Z);
+        {
+            // Initialize the fft plan required for the calculation of the laplacian
+            cufftHandle ft_plan;
+            if(problem_is_2d)
+                cufftPlan2d(&ft_plan,nx,ny,CUFFT_Z2Z);
+            else if(problem_is_3d)
+                cufftPlan3d(&ft_plan,nx,ny,nz,CUFFT_Z2Z);
 
-        //     //--------------------------------------------------//
-        //     //    Here the gradient-descent iterations start    //
-        //     //--------------------------------------------------//
+            //--------------------------------------------------//
+            //    Here the gradient-descent iterations start    //
+            //--------------------------------------------------//
 
-        //     // Allocate space for some new data on the device
-        //     cudaMalloc(&alpha_d,sizeof(double));
-        //     cudaMemcpy(alpha_d,&alpha,sizeof(double),cudaMemcpyHostToDevice);
-        //     cudaMalloc(&beta_d,sizeof(double));
-        //     cudaMemcpy(beta_d,&beta,sizeof(double),cudaMemcpyHostToDevice);
-        //     cuDoubleComplex* psi_new;
-        //     cuDoubleComplex* psi_old;
-        //     cudaMalloc(&psi_new,npoints*sizeof(cuDoubleComplex));
-        //     cudaMalloc(&psi_old,npoints*sizeof(cuDoubleComplex));
-        //     cuDoubleComplex* c_density_d;
-        //     cudaMalloc(&c_density_d,npoints*sizeof(cuDoubleComplex));
+            // Allocate space for some new data on the device
+            cudaMalloc(&alpha_d,sizeof(double));
+            cudaMemcpy(alpha_d,&alpha,sizeof(double),cudaMemcpyHostToDevice);
+            cudaMalloc(&beta_d,sizeof(double));
+            cudaMemcpy(beta_d,&beta,sizeof(double),cudaMemcpyHostToDevice);
+            cuDoubleComplex* psi_new;
+            cuDoubleComplex* psi_old;
+            cudaMalloc(&psi_new,npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&psi_old,npoints*sizeof(cuDoubleComplex));
+            cuDoubleComplex* c_density_d;
+            cudaMalloc(&c_density_d,npoints*sizeof(cuDoubleComplex));
 
-        //     cuDoubleComplex* velocity_x_d;
-        //     cuDoubleComplex* velocity_y_d;
-        //     cudaMalloc(&velocity_x_d, npoints*sizeof(cuDoubleComplex));
-        //     cudaMalloc(&velocity_y_d, npoints*sizeof(cuDoubleComplex));
-        //     cudaMemcpy(velocity_x_d, velocity_x.data(), npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
-        //     cudaMemcpy(velocity_y_d, velocity_y.data(), npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+            cuDoubleComplex* velocity_x_d;
+            cuDoubleComplex* velocity_y_d;
+            cudaMalloc(&velocity_x_d, npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&velocity_y_d, npoints*sizeof(cuDoubleComplex));
+            cudaMemcpy(velocity_x_d, velocity_x.data(), npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+            cudaMemcpy(velocity_y_d, velocity_y.data(), npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
 
-        //     cuDoubleComplex* grad_psi_x_d;
-        //     cuDoubleComplex* grad_psi_y_d;
-        //     cudaMalloc(&grad_psi_x_d, npoints*sizeof(cuDoubleComplex));
-        //     cudaMalloc(&grad_psi_y_d, npoints*sizeof(cuDoubleComplex));
+            cuDoubleComplex* grad_psi_x_d;
+            cuDoubleComplex* grad_psi_y_d;
+            cudaMalloc(&grad_psi_x_d, npoints*sizeof(cuDoubleComplex));
+            cudaMalloc(&grad_psi_y_d, npoints*sizeof(cuDoubleComplex));
 
-        //     // Loop starts here
-        //     for (int it = 0; it < max_num_iter; ++it)
-        //     {
+            // Loop starts here
+            for (int it = 0; it < max_num_iter; ++it)
+            {
 
-        //         // Calculate the action of the laplacian
-        //         cufftExecZ2Z(ft_plan, wave_function_d, ft_wave_function_d, CUFFT_FORWARD);
-        //         cudaDeviceSynchronize();
-        //         SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,kmod2_d,npoints);
-        //         cudaDeviceSynchronize();
-        //         cufftExecZ2Z(ft_plan, ft_wave_function_d, hpsi_d, CUFFT_INVERSE);
-        //         cudaDeviceSynchronize();
-        //         SimpleKernels::rescale<<<gridSize,blockSize>>>(hpsi_d,0.5*pow(TWOPI,2)/npoints,npoints);
-        //         cudaDeviceSynchronize();
+                // Calculate the action of the laplacian
+                cufftExecZ2Z(ft_plan, wave_function_d, ft_wave_function_d, CUFFT_FORWARD);
+                cudaDeviceSynchronize();
+                SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,kmod2_d,npoints);
+                cudaDeviceSynchronize();
+                cufftExecZ2Z(ft_plan, ft_wave_function_d, hpsi_d, CUFFT_INVERSE);
+                cudaDeviceSynchronize();
+                SimpleKernels::rescale<<<gridSize,blockSize>>>(hpsi_d,0.5*pow(TWOPI,2)/npoints,npoints);
+                cudaDeviceSynchronize();
 
-        //         // Calculate the dipolar potential
-        //         SimpleKernels::square_vector<<<gridSize,blockSize>>>(c_density_d,wave_function_d,npoints);
-        //         cudaDeviceSynchronize();
-        //         cufftExecZ2Z(ft_plan,c_density_d,ft_wave_function_d,CUFFT_FORWARD);
-        //         cudaDeviceSynchronize();
-        //         SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,
-        //                                                                        Vtilde_d,
-        //                                                                        npoints);
-        //         cudaDeviceSynchronize();
-        //         cufftExecZ2Z(ft_plan,ft_wave_function_d,Phi_dd_d,CUFFT_INVERSE);
-        //         cudaDeviceSynchronize();
-        //         SimpleKernels::rescale<<<gridSize,blockSize>>>(Phi_dd_d,1./npoints,npoints);
+                // Calculate the dipolar potential
+                SimpleKernels::square_vector<<<gridSize,blockSize>>>(c_density_d,wave_function_d,npoints);
+                cudaDeviceSynchronize();
+                cufftExecZ2Z(ft_plan,c_density_d,ft_wave_function_d,CUFFT_FORWARD);
+                cudaDeviceSynchronize();
+                SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,
+                                                                               Vtilde_d,
+                                                                               npoints);
+                cudaDeviceSynchronize();
+                cufftExecZ2Z(ft_plan,ft_wave_function_d,Phi_dd_d,CUFFT_INVERSE);
+                cudaDeviceSynchronize();
+                SimpleKernels::rescale<<<gridSize,blockSize>>>(Phi_dd_d,1./npoints,npoints);
 
-        //         // Calculate the gradient of the psi along x
-        //         cufftExecZ2Z(ft_plan, wave_function_d, ft_wave_function_d, CUFFT_FORWARD);
-        //         cudaDeviceSynchronize();
-        //         SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,ikx_d,npoints);
-        //         cudaDeviceSynchronize();
-        //         cufftExecZ2Z(ft_plan, ft_wave_function_d, grad_psi_x_d, CUFFT_INVERSE);
-        //         cudaDeviceSynchronize();
-        //         SimpleKernels::rescale<<<gridSize,blockSize>>>(grad_psi_x_d,TWOPI/npoints,npoints);
-        //         cudaDeviceSynchronize();
+                // Calculate the gradient of the psi along x
+                cufftExecZ2Z(ft_plan, wave_function_d, ft_wave_function_d, CUFFT_FORWARD);
+                cudaDeviceSynchronize();
+                SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,ikx_d,npoints);
+                cudaDeviceSynchronize();
+                cufftExecZ2Z(ft_plan, ft_wave_function_d, grad_psi_x_d, CUFFT_INVERSE);
+                cudaDeviceSynchronize();
+                SimpleKernels::rescale<<<gridSize,blockSize>>>(grad_psi_x_d,TWOPI/npoints,npoints);
+                cudaDeviceSynchronize();
 
-        //         // Calculate the gradient of the psi along y
-        //         cufftExecZ2Z(ft_plan, wave_function_d, ft_wave_function_d, CUFFT_FORWARD);
-        //         cudaDeviceSynchronize();
-        //         SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,iky_d,npoints);
-        //         cudaDeviceSynchronize();
-        //         cufftExecZ2Z(ft_plan, ft_wave_function_d, grad_psi_y_d, CUFFT_INVERSE);
-        //         cudaDeviceSynchronize();
-        //         SimpleKernels::rescale<<<gridSize,blockSize>>>(grad_psi_y_d,TWOPI/npoints,npoints);
-        //         cudaDeviceSynchronize();
+                // Calculate the gradient of the psi along y
+                cufftExecZ2Z(ft_plan, wave_function_d, ft_wave_function_d, CUFFT_FORWARD);
+                cudaDeviceSynchronize();
+                SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,iky_d,npoints);
+                cudaDeviceSynchronize();
+                cufftExecZ2Z(ft_plan, ft_wave_function_d, grad_psi_y_d, CUFFT_INVERSE);
+                cudaDeviceSynchronize();
+                SimpleKernels::rescale<<<gridSize,blockSize>>>(grad_psi_y_d,TWOPI/npoints,npoints);
+                cudaDeviceSynchronize();
 
-        //         // Calculate the rest of H|psi>
-        //         SolverKernels::step_2_dipolar_hpsi<<<gridSize,blockSize>>>(hpsi_d,
-        //                                                                      wave_function_d,
-        //                                                                      external_potential_d,
-        //                                                                      Phi_dd_d,
-        //                                                                      scattering_length_d,
-        //                                                                      velocity_x_d,
-        //                                                                      velocity_y_d,
-        //                                                                      grad_psi_x_d,
-        //                                                                      grad_psi_y_d,
-        //                                                                      gamma_epsilondd_d,
-        //                                                                      npoints);
-        //         cudaDeviceSynchronize();
+                // Calculate the rest of H|psi>
+                SolverKernels::step_2_dipolar_hpsi<<<gridSize,blockSize>>>(hpsi_d,
+                                                                             wave_function_d,
+                                                                             external_potential_d,
+                                                                             Phi_dd_d,
+                                                                             scattering_length_d,
+                                                                             velocity_x_d,
+                                                                             velocity_y_d,
+                                                                             grad_psi_x_d,
+                                                                             grad_psi_y_d,
+                                                                             gamma_epsilondd_d,
+                                                                             npoints);
+                cudaDeviceSynchronize();
 
-        //         // Perform a gradient descent (plus heavy-ball) step
-        //         SolverKernels::gradient_descent_step<<<gridSize,blockSize>>>(wave_function_d,
-        //                                                                        hpsi_d,
-        //                                                                        psi_new,
-        //                                                                        psi_old,
-        //                                                                        alpha_d,
-        //                                                                        beta_d,
-        //                                                                        npoints);
-        //         cudaDeviceSynchronize();
+                // Perform a gradient descent (plus heavy-ball) step
+                SolverKernels::gradient_descent_step<<<gridSize,blockSize>>>(wave_function_d,
+                                                                               hpsi_d,
+                                                                               psi_new,
+                                                                               psi_old,
+                                                                               alpha_d,
+                                                                               beta_d,
+                                                                               npoints);
+                cudaDeviceSynchronize();
 
-        //         // Normalize the wave function
-        //         SimpleKernels::square_vector<<<gridSize,blockSize>>>(density_d,psi_new,npoints);
-        //         cudaDeviceSynchronize();
-        //         cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
-        //         cudaDeviceSynchronize();
-        //         norm_d[0] = norm_d[0]*dv;
-        //         std::cout << "Current norm: " << norm_d[0] << " vs initial norm: " << initial_norm_d[0] << std::endl;
-        //         SimpleKernels::rescale<<<gridSize,blockSize>>>(wave_function_d,
-        //                                                          psi_new,
-        //                                                          sqrt(initial_norm_d[0]/norm_d[0]),
-        //                                                          npoints);
-        //         cudaDeviceSynchronize();
+                // Normalize the wave function
+                SimpleKernels::square_vector<<<gridSize,blockSize>>>(density_d,psi_new,npoints);
+                cudaDeviceSynchronize();
+                cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
+                cudaDeviceSynchronize();
+                norm_d[0] = norm_d[0]*dv;
+                SimpleKernels::rescale<<<gridSize,blockSize>>>(wave_function_d,
+                                                                 psi_new,
+                                                                 sqrt(initial_norm_d[0]/norm_d[0]),
+                                                                 npoints);
+                cudaDeviceSynchronize();
 
-        //         // Calculate the chemical potential
-        //         SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(density_d,hpsi_d,wave_function_d,npoints);
-        //         cudaDeviceSynchronize();
-        //         cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,chemical_potential_d,npoints);
-        //         cudaDeviceSynchronize();
-		//         // std::cout << norm_d[0] << std::endl;
-		//         // std::cout << chemical_potential_d[0] << std::endl;
-		//         chemical_potential_d[0] = chemical_potential_d[0]*dv/norm_d[0];
+                // Calculate the chemical potential
+                SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(density_d,hpsi_d,wave_function_d,npoints);
+                cudaDeviceSynchronize();
+                cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,chemical_potential_d,npoints);
+                cudaDeviceSynchronize();
+		        
+                chemical_potential_d[0] = chemical_potential_d[0]*dv/norm_d[0];
+                // std::cout << "Current norm" << norm_d[0] << std::endl;
+                // std::cout << "Current chemical potential: " << chemical_potential_d[0] << std::endl;
 
 
-        //         // Eventually write some output
-        //         if(it % write_output_every == 0)
-        //             write_gradient_descent_output(it,output_stream);
+                // Eventually write some output
+                if(it % write_output_every == 0)
+                    write_gradient_descent_output(it,output_stream);
 
-        //     }
+            }
 
-        //     // Free the remaining arrays from the device
-        //     cudaFree(psi_new);
-        //     cudaFree(psi_old);
-        //     cudaFree(c_density_d);
-        //     cudaFree(velocity_x_d);
-        //     cudaFree(velocity_y_d);
-        //     cudaFree(grad_psi_x_d);
-        //     cudaFree(grad_psi_y_d);
+            // Free the remaining arrays from the device
+            cudaFree(psi_new);
+            cudaFree(psi_old);
+            cudaFree(c_density_d);
+            cudaFree(velocity_x_d);
+            cudaFree(velocity_y_d);
+            cudaFree(grad_psi_x_d);
+            cudaFree(grad_psi_y_d);
 
-        //     // Copy out the results
-        //     cudaMemcpy(result_wave_function.data(),
-        //                wave_function_d,
-        //                npoints*sizeof(cuDoubleComplex),
-        //                cudaMemcpyDeviceToHost);
-        //     double result_chemical_potential = chemical_potential_d[0];
+            // Copy out the results
+            cudaMemcpy(result_wave_function.data(),
+                       wave_function_d,
+                       npoints*sizeof(cuDoubleComplex),
+                       cudaMemcpyDeviceToHost);
+            double result_chemical_potential = chemical_potential_d[0];
 
-        //     // Return
-        //     return std::make_pair(result_wave_function,result_chemical_potential);
+            // Return
+            return std::make_pair(result_wave_function,result_chemical_potential);
 
-        // }
+        }
 
 
         /**
