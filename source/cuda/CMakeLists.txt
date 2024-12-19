@@ -50,6 +50,8 @@ set_target_properties(cudaSolvers
 
 if(WHICH_CLUSTER STREQUAL "helix")
     set_property(TARGET cudaSolvers PROPERTY CUDA_ARCHITECTURES 80)
+elseif(WHICH_CLUSTER STREQUAL "einc")
+    set_property(TARGET cudaSolvers PROPERTY CUDA_ARCHITECTURES 80)
 elseif(WHICH_CLUSTER STREQUAL "justus")
     set_property(TARGET cudaSolvers PROPERTY CUDA_ARCHITECTURES OFF)
 endif()

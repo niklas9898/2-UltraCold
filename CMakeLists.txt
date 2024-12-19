@@ -11,7 +11,7 @@
 # 3.18 is the minimum to work safely with CUDA
 #--------------------------------------------------
 
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.20)
 
 #-----------------------------
 # Set the generator as make
@@ -19,27 +19,36 @@ cmake_minimum_required(VERSION 3.18)
 
 set (CMAKE_GENERATOR "Unix Makefiles" CACHE INTERNAL "" FORCE)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
+# set(CMAKE_CXX_COMPILER /opt/bwhpc/common/compiler/intel/2022.2/compiler/2022.1.0/linux/bin/intel64/icpc)
+# set(CMAKE_C_COMPILER /opt/bwhpc/common/compiler/intel/2022.2/compiler/2022.1.0/linux/bin/intel64/icc)
+# set(CMAKE_Fortran_COMPILER /opt/bwhpc/common/compiler/intel/2022.2/compiler/2022.1.0/linux/bin/intel64/ifort)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lstdc++ -lc")
 
-	#-------------------------------
-	# Explicitly set the compilers
-	#-------------------------------
 
-	set(CMAKE_CXX_COMPILER icpc)
-	set(CMAKE_C_COMPILER icc)
-	set(CMAKE_Fortran_COMPILER ifort)
 
-	#---------------------------
-	# Set useful compiler flags
-	#---------------------------
+# if(CMAKE_CXX_COMPILER_ID MATCHES Intel)
 
-	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
-	else()
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
-	endif()
+    #-------------------------------
+    # Explicitly set the compilers
+    #-------------------------------
+    
+    # set(CMAKE_CXX_COMPILER icpc)
+    # set(CMAKE_C_COMPILER icc)
+    # set(CMAKE_Fortran_COMPILER ifort)
+    
 
-endif()
+    #---------------------------
+    # Set useful compiler flags
+    #---------------------------
+
+    # if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
+    #         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
+    # else()
+    #         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
+    # endif()
+
+# endif()
 
 #---------------------------------------------
 # Decide on which cluster to build
@@ -61,13 +70,13 @@ option(ULTRACOLD_WITH_CUDA "Build UltraCold with CUDA" OFF)
 if(ULTRACOLD_WITH_CUDA)
 	message(STATUS "Building UltraCold with cuda libraries")
 	if(WHICH_CLUSTER STREQUAL "justus")
-            project(UltraCold LANGUAGES CUDA C CXX Fortran VERSION 1.0)
-            set(CMAKE_CUDA_COMPILER nvcc)            
-        else()
-
-            project(UltraCold LANGUAGES C CXX Fortran VERSION 1.0)
-            enable_language(CUDA)
-        endif()
+        project(UltraCold LANGUAGES CUDA C CXX Fortran VERSION 1.0)
+        set(CMAKE_CUDA_COMPILER nvcc)            
+    else()
+        message(STATUS "for intel compilers")
+        project(UltraCold LANGUAGES C CXX Fortran VERSION 1.0)
+        enable_language(CUDA)
+    endif()
 endif()
 
 #---------------------------------------

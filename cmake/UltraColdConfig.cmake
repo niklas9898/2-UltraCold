@@ -18,12 +18,12 @@ macro(ULTRACOLD_SETUP_TARGET target)
 
     if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
         #-------------------------------
-	# Explicitly set the compilers
-	#-------------------------------
+        # Explicitly set the compilers
+        #-------------------------------
 
-	set(CMAKE_CXX_COMPILER icpc)
-	set(CMAKE_C_COMPILER icc)
-	set(CMAKE_Fortran_COMPILER ifort)
+        set(CMAKE_CXX_COMPILER icpc)
+        set(CMAKE_C_COMPILER icc)
+        set(CMAKE_Fortran_COMPILER ifort)
 
         #--------------------------------------------
         # Still need a c++ compiler. Set it still as
@@ -72,24 +72,32 @@ macro(ULTRACOLD_SETUP_TARGET_WITH_CUDA target)
 
     if(WHICH_CLUSTER STREQUAL "helix" OR WHICH_CLUSTER STREQUAL "justus")
         #-------------------------------
-	# Explicitly set the compilers
-	#-------------------------------
+        # Explicitly set the compilers
+        #-------------------------------
 
-	set(CMAKE_CXX_COMPILER icpc)
-	set(CMAKE_C_COMPILER icc)
-	set(CMAKE_Fortran_COMPILER ifort)
+        # set(CMAKE_CXX_COMPILER icpc)
+        # set(CMAKE_C_COMPILER icc)
+        # set(CMAKE_Fortran_COMPILER ifort)
+        # set(CMAKE_CXX_COMPILER g++)
+        # set(CMAKE_C_COMPILER gcc)
+        # set(CMAKE_Fortran_COMPILER gfortran)
+
+        # find_package(OpenMP REQUIRED)
+        # if (OPENMP_FOUND)
+        #     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        # endif()
 
         #--------------------------------------------
         # Still need a c++ compiler. Set it still as
         # as the Intel one, plus link to MKL
         #--------------------------------------------
 
-        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
-        else()
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
-        endif()
-    endif()    
+        # if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
+        #     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
+        # else()
+        #     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
+        # endif()
+    endif()
     
     #----------------------------------------
     # Set the fundamental include directory
