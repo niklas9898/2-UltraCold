@@ -64,6 +64,9 @@ namespace UltraCold
             blockSize = 512;
             gridSize = (npoints + blockSize - 1) / blockSize;
 
+            std::cout << "Test_0.0" << std::endl;
+
+
             // Allocate memory for all device arrays
             cudaMalloc(&external_potential_d,npoints*sizeof(double));
             cudaMalloc(&kmod2_d,             npoints*sizeof(double));
@@ -102,6 +105,9 @@ namespace UltraCold
             dy = y(1)-y(0);
             dv = dx*dy;
 
+            std::cout << "Test_0.1" << std::endl;
+
+
             // Initialize the device reduce kernel
             cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
             cudaDeviceSynchronize();
@@ -118,6 +124,9 @@ namespace UltraCold
             norm_d[0]=norm_d[0]*dv;
             initial_norm_d[0]=norm_d[0];
             std::cout << "Initial norm: " << initial_norm_d[0] << std::endl;
+
+            std::cout << "Test_0.2" << std::endl;
+
 
             // Initialize the wave function to return as a result
             result_wave_function.reinit(nx,ny);
@@ -172,6 +181,7 @@ namespace UltraCold
                                     (-1 + 3*sqrt(PI) * pow(qd,2)/q * erfcx(q)) * pow(sin(alpha),2) +
                                     ( 2 - 3*sqrt(PI) * q * erfcx(q)) * pow(cos(alpha),2)
                             );
+                    
                     if (isnan(value) && kx(i) == 0 && ky(j) == 0)
                     {
                         Vtilde(i, j) = sqrt(8*PI)*scattering_length*epsilon_dd*(3*std::pow(std::cos(alpha),2)-1);
@@ -188,6 +198,8 @@ namespace UltraCold
 
             cudaMalloc(&Vtilde_d,npoints*sizeof(cuDoubleComplex));
             cudaMemcpy(Vtilde_d,Vtilde.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+
+
             cudaMalloc(&Phi_dd_d,npoints*sizeof(cuDoubleComplex));
 
             // Initialize gamma(\epsilon_dd) for the LHY correction
@@ -357,6 +369,7 @@ namespace UltraCold
                                     (-1 + 3*sqrt(PI) * pow(qd,2)/q * erfcx(q)) * pow(sin(alpha),2) +
                                     ( 2 - 3*sqrt(PI) * q * erfcx(q)) * pow(cos(alpha),2)
                             );
+
                     if (isnan(value) && kx(i) == 0 && ky(j) == 0)
                     {
                         Vtilde(i, j) = sqrt(8*PI)*scattering_length*epsilon_dd*(3*std::pow(std::cos(alpha),2)-1);
@@ -906,6 +919,16 @@ namespace UltraCold
             cuDoubleComplex* c_density_d;
             cudaMalloc(&c_density_d,npoints*sizeof(cuDoubleComplex));
 
+
+
+            size_t free_mem, total_mem;
+            cudaMemGetInfo(&free_mem, &total_mem);
+            
+            std::cout << "Free GPU memory: " << free_mem / (1024 * 1024) << " MB\n";
+            std::cout << "Total GPU memory: " << total_mem / (1024 * 1024) << " MB\n";
+            
+
+
             // Loop starts here
             for (int it = 0; it < max_num_iter; ++it)
             {
@@ -913,6 +936,7 @@ namespace UltraCold
                 // Calculate the action of the laplacian
                 cufftExecZ2Z(ft_plan, wave_function_d, ft_wave_function_d, CUFFT_FORWARD);
                 cudaDeviceSynchronize();
+
                 SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,kmod2_d,npoints);
                 cudaDeviceSynchronize();
                 cufftExecZ2Z(ft_plan, ft_wave_function_d, hpsi_d, CUFFT_INVERSE);
@@ -925,9 +949,11 @@ namespace UltraCold
                 cudaDeviceSynchronize();
                 cufftExecZ2Z(ft_plan,c_density_d,ft_wave_function_d,CUFFT_FORWARD);
                 cudaDeviceSynchronize();
+
                 SimpleKernels::vector_multiplication<<<gridSize,blockSize>>>(ft_wave_function_d,
                                                                                Vtilde_d,
                                                                                npoints);
+
                 cudaDeviceSynchronize();
                 cufftExecZ2Z(ft_plan,ft_wave_function_d,Phi_dd_d,CUFFT_INVERSE);
                 cudaDeviceSynchronize();
@@ -957,7 +983,8 @@ namespace UltraCold
                 SimpleKernels::square_vector<<<gridSize,blockSize>>>(density_d,psi_new,npoints);
                 cudaDeviceSynchronize();
                 cub::DeviceReduce::Sum(temporary_storage_d,size_temporary_storage,density_d,norm_d,npoints);
-                cudaDeviceSynchronize();
+                cudaDeviceSynchronize();             
+
                 norm_d[0] = norm_d[0]*dv;
                 SimpleKernels::rescale<<<gridSize,blockSize>>>(wave_function_d,
                                                                  psi_new,

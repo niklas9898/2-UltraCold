@@ -15,6 +15,7 @@
 *
 *--------------------------------------------------------------------------------*/
 
+#include <random>
 #include "cudaGPSolver.cuh"
 #include "mesh_fourier_space.hpp"
 #include "DataWriter.hpp"
@@ -22,6 +23,8 @@
 #include "cufft.h"
 #include "simple_kernels.cuh"
 #include "solver_kernels.cuh"
+#include "DFtCalculator.hpp"
+#include <typeinfo>
 
 #define PI 3.1415926535897932384626433
 #define TWOPI (2*PI)
@@ -104,6 +107,9 @@ namespace UltraCold
 
             // Initialize the wave function to return as a result
             result_wave_function.reinit(nx);
+
+            // Initialize the wave function for the output
+            wave_function_output.reinit(nx);
 
             // Initialize the host and device vectors containing the mesh axis. This can be useful in particular for
             // data output
@@ -206,6 +212,9 @@ namespace UltraCold
 
             // Initialize the wave function to return as a result
             result_wave_function.reinit(nx,ny);
+
+            // Initialize the wave function for the output
+            wave_function_output.reinit(nx,ny);
 
             // Initialize the host vectors containing the mesh axis. This can be useful in particular for data output
             x_axis.reinit(nx);
@@ -325,6 +334,9 @@ namespace UltraCold
             // Initialize the wave function to return as a result
             result_wave_function.reinit(nx,ny,nz);
 
+            // Initialize a vector to output the wave function
+            wave_function_output.reinit(nx,ny,nz);
+
             // Initialize the host vectors containing the mesh axis. This can be useful in particular for data output
             x_axis.reinit(nx);
             y_axis.reinit(ny);
@@ -358,8 +370,7 @@ namespace UltraCold
             cudaMalloc(&r2mod_d,npoints*sizeof(double));
             cudaMemcpy(r2mod_d,r2mod.data(),npoints*sizeof(double),cudaMemcpyHostToDevice);
 
-            // Initialize a vector to output the wave function
-            wave_function_output.reinit(nx,ny,nz);
+
         }
 
         /**
@@ -548,8 +559,7 @@ namespace UltraCold
          * @brief Real-time operator splitting
          * */
 
-        void GPSolver::run_operator_splitting(int number_of_time_steps, double time_step, std::ostream &output_stream,
-                                              int write_output_every)
+        void GPSolver::run_operator_splitting(int number_of_time_steps, double time_step, std::ostream &output_stream, int write_output_every, int iteration_twa)
         {
             // Copy input data into the device
             cudaMallocManaged(&time_step_d,sizeof(double));
@@ -564,6 +574,10 @@ namespace UltraCold
             else if(problem_is_3d)
                 cufftPlan3d(&ft_plan,nx,ny,nz,CUFFT_Z2Z);
 
+            // Initialize other variables
+            this->write_output_every=write_output_every;
+            this->iteration_twa=iteration_twa;
+
             //----------------------------------------------------//
             //    Here the operator-splitting iterations start    //
             //----------------------------------------------------//
@@ -574,10 +588,10 @@ namespace UltraCold
                 // Write output starting from the very first iteration
                 if(it % write_output_every == 0)
                 {
-                    cudaMemcpy(wave_function_output.data(),
-                               wave_function_d,
-                               npoints*sizeof(cuDoubleComplex),
-                               cudaMemcpyDeviceToHost);
+                    // cudaMemcpy(wave_function_output.data(),
+                    //            wave_function_d,
+                    //            npoints*sizeof(cuDoubleComplex),
+                    //            cudaMemcpyDeviceToHost);
                     write_operator_splitting_output(it,output_stream);
                 }
 
@@ -617,7 +631,7 @@ namespace UltraCold
          *
          */
 
-        void GPSolver::write_operator_splitting_output(int it,std::ostream& output_stream)
+        void GPSolver::write_operator_splitting_output(size_t iteration_number,std::ostream& output_stream)
         {}
 
         /**
@@ -626,10 +640,114 @@ namespace UltraCold
          *
          * */
 
+        /**
+         * @brief Copy the wave function out from device to host
+         *
+         * In derived classes, the wave function will be available as wave_function_output
+         *
+         * */
+
+        void GPSolver::copy_out_wave_function()
+        {
+            cudaMemcpy(wave_function_output.data(),
+                    wave_function_d,
+                    npoints*sizeof(cuDoubleComplex),
+                    cudaMemcpyDeviceToHost);
+            cudaDeviceSynchronize();
+        }
+
         void GPSolver::reinit(Vector<std::complex<double>> &psi, Vector<double> &Vext)
         {
             cudaMemcpy(wave_function_d,psi.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
             cudaMemcpy(external_potential_d,Vext.data(),npoints*sizeof(double),cudaMemcpyHostToDevice);
+        }
+
+        /**
+         * @brief Set initial conditions for a Truncated Wigner run
+         *
+         */
+
+        void GPSolver::set_tw_initial_conditions(bool system_is_trapped,
+            std::default_random_engine& generator)
+        {
+
+            // Need to get in a copy of the scattering length
+            double scattering_length;
+            cudaMemcpy(&scattering_length,scattering_length_d,sizeof(double),cudaMemcpyDeviceToHost);
+
+            // First, consider the case in which the system is not trapped
+
+            if (!system_is_trapped)
+            {
+
+                // Obtain a random seed from the clock
+                std::uniform_real_distribution<double> distribution(-1, 1);
+
+                // Generate the alphas
+                double u, v, s; // useful additional variables that we use to generate our random numbers
+                std::complex<double> alphak;
+
+                // Now refill the initial wave function with the single particle modes
+                if (problem_is_2d)
+                {
+                    Vector<std::complex<double>> psitilde_tw(nx, ny);
+                    Vector<std::complex<double>> psi(nx, ny);
+                    MKLWrappers::DFtCalculator dft_tw(psi, psitilde_tw);
+
+                    cudaMemcpy(psi.data(), wave_function_d, npoints * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+
+                    dft_tw.compute_forward();
+
+                    double density = initial_norm_d[0] / (4. * x_axis(nx - 1) * y_axis(ny - 1));
+                    double eps_k;
+                    std::complex<double> Ek, uk, vk;
+
+                    for (int i = 0; i < nx; ++i)
+                    for (int j = 0; j < ny; ++j)
+                    {
+                    do
+                    {
+                    u = distribution(generator);
+                    v = distribution(generator);
+                    s = u * u + v * v;
+                    } while (s >= 1.0 || s == 0);
+
+                    s = sqrt((-2.0 * log(s)) / s);
+                    u = u * s;
+                    v = v * s;
+                    alphak.real(std::sqrt(0.25) * u);
+                    alphak.imag(std::sqrt(0.25) * v);
+
+
+                    // changed single particle energy to k^2/m, and added the 2pi factor
+                    // 4pi since scattering_length was divided by sqrt(2pi)
+
+                    eps_k = 0.5*(pow(TWOPI*kx_axis[i],2)+pow(TWOPI*ky_axis[j],2));
+                    Ek = std::sqrt(eps_k*(eps_k+2*density*4*PI*scattering_length));
+
+                    if (eps_k == 0)
+                    {
+                    uk = 1;
+                    vk = 0;
+                    }
+                    else
+                    {
+                    uk = 0.5 * (sqrt(eps_k / Ek) + sqrt(Ek / eps_k));
+                    vk = 0.5 * (sqrt(eps_k / Ek) - sqrt(Ek / eps_k));
+                    }
+
+                    psitilde_tw(i, j) += (alphak * uk - conj(alphak) * vk);
+
+                    }
+
+                    dft_tw.compute_backward();
+
+                    cudaMemcpy(wave_function_d,psi.data(),npoints*sizeof(cuDoubleComplex),cudaMemcpyHostToDevice);
+
+                }
+
+            // We are now ready to perform a new run of the TWA.
+            }
         }
     }
 }

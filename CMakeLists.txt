@@ -42,11 +42,12 @@ set (CMAKE_GENERATOR "Unix Makefiles" CACHE INTERNAL "" FORCE)
     # Set useful compiler flags
     #---------------------------
 
+    
     # if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "2021.5.0.20211109")
-    #         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
+    #     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mkl")
     # else()
-    #         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
-    # endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qmkl")
+   # endif()
 
 # endif()
 
@@ -69,7 +70,7 @@ option(ULTRACOLD_WITH_CUDA "Build UltraCold with CUDA" OFF)
 
 if(ULTRACOLD_WITH_CUDA)
 	message(STATUS "Building UltraCold with cuda libraries")
-	if(WHICH_CLUSTER STREQUAL "justus")
+    if(WHICH_CLUSTER STREQUAL "justus")
         project(UltraCold LANGUAGES CUDA C CXX Fortran VERSION 1.0)
         set(CMAKE_CUDA_COMPILER nvcc)            
     else()

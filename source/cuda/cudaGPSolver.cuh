@@ -19,7 +19,10 @@
 #define ULTRACOLD_CUDA_GP_SOLVER
 
 #include <vector>
+#include <cufft.h>
+#include <fstream>
 #include "cuComplex.h"
+#include <curand.h>
 #include "Vector.hpp"
 
 namespace UltraCold
@@ -87,7 +90,11 @@ namespace UltraCold
                 void run_operator_splitting(int number_of_time_steps,
                                             double time_step,
                                             std::ostream& output_stream,
-                                            int write_output_every);
+                                            int write_output_every,
+                                            int iteration_twa=0);
+
+                void set_tw_initial_conditions(bool system_is_trapped,
+                                                std::default_random_engine& generator);
 
                 // Get a pointer to the wave function stored on the device
 
@@ -98,9 +105,12 @@ namespace UltraCold
 
                 // Write the output
                 void write_gradient_descent_output(int it);
-                void write_operator_splitting_output(int it,std::ostream& output_stream);
+                virtual void write_operator_splitting_output(size_t iteration_number,std::ostream& output_stream);
 
-            private:
+                // Copy the wave function out from device to host
+                void copy_out_wave_function();
+
+            // private:
 
                 // Vector data members, needed for the calculations
                 // Vectors living in device memory have the _d postfix
@@ -128,6 +138,8 @@ namespace UltraCold
                 size_t size_temporary_storage = 0;   // This will also be initialized by cub with the future size of
                                                      // the problem.
 
+                
+               
                 Vector<double> x_axis,y_axis,z_axis,r2mod,kx_axis,ky_axis,kz_axis;
 
                 // Other cuda necessary data members
@@ -153,6 +165,9 @@ namespace UltraCold
                 bool problem_is_1d=false;
                 bool problem_is_2d=false;
                 bool problem_is_3d=false;
+
+                int write_output_every;
+                int iteration_twa;
 
                 // Eigenstates of the harmonic oscillator, useful for TWA
                 std::vector<Vector<double>> eigenstates_harmonic_oscillator;
